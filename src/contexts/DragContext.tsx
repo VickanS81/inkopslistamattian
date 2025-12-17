@@ -8,7 +8,8 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import { CategoryType } from '@/types/shopping';
 
@@ -122,7 +123,7 @@ export function DragProvider({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
