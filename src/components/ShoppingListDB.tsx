@@ -4,11 +4,14 @@ import { Header } from './Header';
 import { EmptyState } from './EmptyState';
 import { AddItemInput } from './AddItemInput';
 import { ShareDialog } from './ShareDialog';
+import { SettingsDialog } from './SettingsDialog';
 import { useShoppingListDB } from '@/hooks/useShoppingListDB';
+import { useSettings } from '@/hooks/useSettings';
 import { DragProvider } from '@/contexts/DragContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
+import { categorizeItem } from '@/utils/categorizeItem';
 
 export function ShoppingListDB() {
   const {
@@ -28,6 +31,7 @@ export function ShoppingListDB() {
   } = useShoppingListDB();
 
   const { signOut, user } = useAuth();
+  const { settings, updateSettings } = useSettings();
 
   if (isLoading) {
     return (
@@ -44,7 +48,8 @@ export function ShoppingListDB() {
   const orderedCategories = categoryOrder;
 
   const handleAddItem = (name: string) => {
-    addItem(name, 'other', '1', 'st');
+    const category = settings.autoCategorize ? categorizeItem(name) : 'other';
+    addItem(name, category, '1', 'st');
   };
 
   const handleMoveCategory = (categoryId: CategoryType, toIndex: number) => {
@@ -64,6 +69,7 @@ export function ShoppingListDB() {
             {currentList && (
               <ShareDialog shareCode={currentList.share_code} members={members} />
             )}
+            <SettingsDialog settings={settings} onUpdateSettings={updateSettings} />
             <span className="text-sm text-muted-foreground">
               {currentList?.name}
             </span>
