@@ -13,7 +13,7 @@ import { DragProvider, useDragState } from '@/contexts/DragContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
-import { categorizeItem } from '@/utils/categorizeItem';
+
 import { supabase } from '@/integrations/supabase/client';
 import { SpellSuggestion } from './ShoppingItem';
 
@@ -105,17 +105,23 @@ export function ShoppingListDB() {
   const { settings, updateSettings } = useSettings();
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
 
-  const checkSpelling = useCallback(async (itemId: string, word: string) => {
+  const analyzeWithAI = useCallback(async (itemId: string, word: string, shouldCategorize: boolean) => {
     try {
       const { data, error } = await supabase.functions.invoke('spell-check', {
         body: { word }
       });
 
       if (error) {
-        console.error('Spell check error:', error);
+        console.error('AI analysis error:', error);
         return;
       }
 
+      // If auto-categorize is on, move to AI-determined category
+      if (shouldCategorize && data?.category && data.category !== 'other') {
+        await moveItemToCategory(itemId, data.category as CategoryType);
+      }
+
+      // Show spell suggestion if misspelled
       if (data?.isMisspelled && data?.correctedWord) {
         setSpellSuggestions(prev => ({
           ...prev,
@@ -126,17 +132,25 @@ export function ShoppingListDB() {
         }));
       }
     } catch (err) {
-      console.error('Spell check failed:', err);
+      console.error('AI analysis failed:', err);
     }
-  }, []);
+  }, [moveItemToCategory]);
+
+  const handleAddItem = async (name: string) => {
+    // Always add to 'other' first, then let AI categorize
+    const itemId = await addItem(name, 'other', '1', 'st');
+    
+    if (itemId) {
+      // AI handles both categorization and spell checking
+      analyzeWithAI(itemId, name, settings.autoCategorize);
+    }
+  };
 
   const handleAcceptSuggestion = useCallback(async (itemId: string, correctedWord: string, category: CategoryType) => {
-    // Update the item name and category
     await updateItemName(itemId, correctedWord);
     if (category !== 'other') {
       await moveItemToCategory(itemId, category);
     }
-    // Remove the suggestion
     setSpellSuggestions(prev => {
       const next = { ...prev };
       delete next[itemId];
@@ -152,26 +166,8 @@ export function ShoppingListDB() {
     });
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Laddar...</div>
-      </div>
-    );
-  }
-
   const hasItems = totalCount > 0;
   const allComplete = hasItems && checkedCount === totalCount;
-
-  const handleAddItem = async (name: string) => {
-    const category = settings.autoCategorize ? categorizeItem(name) : 'other';
-    const itemId = await addItem(name, category, '1', 'st');
-    
-    // Check spelling after adding (only if not auto-categorizing)
-    if (!settings.autoCategorize && itemId) {
-      checkSpelling(itemId, name);
-    }
-  };
 
   const handleMoveCategory = (categoryId: CategoryType, toIndex: number) => {
     moveCategoryById(categoryId, toIndex);
