@@ -1,9 +1,10 @@
-import { CATEGORIES, CategoryType } from '@/types/shopping';
+import { CategoryType } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
 import { EmptyState } from './EmptyState';
 import { AddItemInput } from './AddItemInput';
 import { useShoppingList } from '@/hooks/useShoppingList';
+import { useCategoryOrder } from '@/hooks/useCategoryOrder';
 import { DragProvider } from '@/contexts/DragContext';
 
 export function ShoppingList() {
@@ -21,6 +22,8 @@ export function ShoppingList() {
     progress,
   } = useShoppingList();
 
+  const { categoryOrder, moveCategoryById } = useCategoryOrder();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -32,20 +35,25 @@ export function ShoppingList() {
   const hasItems = totalCount > 0;
   const allComplete = hasItems && checkedCount === totalCount;
 
-  // Get categories in the defined order, but only those with items
+  // Get categories in the user's custom order, but only those with items
   // Always show "other" if there are ANY items (as drop target)
-  const orderedCategories = CATEGORIES
-    .map(c => c.id)
-    .filter(catId => {
-      // Show "other" always when there are items (as potential drop target)
-      if (catId === 'other') {
-        return hasItems || groupedItems[catId]?.length > 0;
-      }
-      return groupedItems[catId]?.length > 0;
-    });
+  const orderedCategories = categoryOrder.filter(catId => {
+    if (catId === 'other') {
+      return hasItems || (groupedItems[catId]?.length ?? 0) > 0;
+    }
+    return (groupedItems[catId]?.length ?? 0) > 0;
+  });
 
   const handleAddItem = (name: string) => {
     addItem(name, 'other', '1', 'st');
+  };
+
+  const handleMoveCategory = (categoryId: CategoryType, toIndex: number) => {
+    // Find the actual index in the full categoryOrder
+    const visibleCategories = orderedCategories;
+    const targetCategory = visibleCategories[toIndex] || visibleCategories[visibleCategories.length - 1];
+    const targetIndex = categoryOrder.indexOf(targetCategory);
+    moveCategoryById(categoryId, targetIndex);
   };
 
   return (
@@ -69,13 +77,15 @@ export function ShoppingList() {
             <EmptyState type="complete" onReset={resetList} />
           ) : (
             <div className="divide-y divide-border">
-              {orderedCategories.map(categoryId => (
+              {orderedCategories.map((categoryId, index) => (
                 <CategoryGroup
                   key={categoryId}
                   category={categoryId as CategoryType}
                   items={groupedItems[categoryId as CategoryType] || []}
+                  index={index}
                   onToggleItem={toggleItem}
                   onMoveItem={moveItemToCategory}
+                  onMoveCategory={handleMoveCategory}
                 />
               ))}
             </div>
@@ -85,7 +95,7 @@ export function ShoppingList() {
         {/* Install prompt hint */}
         <footer className="px-4 py-3 bg-secondary/30 border-t border-border text-center safe-area-inset-bottom">
           <p className="text-xs text-muted-foreground">
-            💡 Dra varor till kategori-rubrikerna för att sortera
+            💡 Dra kategorier eller varor för att sortera efter din butik
           </p>
         </footer>
       </div>
