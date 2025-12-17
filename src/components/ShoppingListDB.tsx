@@ -223,9 +223,7 @@ export function ShoppingListDB() {
         </div>
 
         <Header
-          progress={progress}
           checkedCount={checkedCount}
-          totalCount={totalCount}
           onClearChecked={clearChecked}
           onReset={handleReset}
           hasCheckedItems={checkedCount > 0}
