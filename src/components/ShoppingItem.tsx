@@ -2,7 +2,8 @@ import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { Check, GripVertical } from 'lucide-react';
 import { ShoppingItem as ShoppingItemType } from '@/types/shopping';
 import { useRef } from 'react';
-import { useDragContext } from '@/contexts/DragContext';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ShoppingItemProps {
   item: ShoppingItemType;
@@ -12,7 +13,22 @@ interface ShoppingItemProps {
 export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
   const x = useMotionValue(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setDraggedItemId } = useDragContext();
+  
+  // Draggable for moving between categories
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: `item:${item.id}`,
+  });
+
+  const style = transform ? {
+    transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 50 : undefined,
+  } : undefined;
   
   // Transform for the check indicator background
   const checkBgOpacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
@@ -26,28 +42,12 @@ export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('itemId', item.id);
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedItemId(item.id);
-    
-    // Create a custom drag image
-    const dragImage = document.createElement('div');
-    dragImage.textContent = item.name;
-    dragImage.className = 'px-3 py-2 bg-card rounded-lg shadow-lg text-sm font-medium';
-    dragImage.style.position = 'absolute';
-    dragImage.style.top = '-1000px';
-    document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 0, 0);
-    setTimeout(() => document.body.removeChild(dragImage), 0);
-  };
-
-  const handleDragEndNative = () => {
-    setDraggedItemId(null);
-  };
-
   return (
-    <div ref={containerRef} className="relative overflow-hidden">
+    <div 
+      ref={containerRef} 
+      className={`relative overflow-hidden ${isDragging ? 'opacity-50' : ''}`}
+      style={style}
+    >
       {/* Swipe indicators */}
       <motion.div 
         className="absolute inset-y-0 left-0 w-20 flex items-center justify-center bg-primary"
@@ -75,12 +75,13 @@ export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
           ${item.checked ? 'bg-checked-bg' : ''}
         `}
       >
-        {/* Drag handle */}
+        {/* Drag handle for moving between categories */}
         <div
-          draggable
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEndNative}
-          className="flex-shrink-0 p-1 -ml-2 cursor-grab active:cursor-grabbing touch-none"
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 p-2 -ml-2 cursor-grab active:cursor-grabbing touch-manipulation"
+          style={{ touchAction: 'none' }}
         >
           <GripVertical className="w-5 h-5 text-muted-foreground/50" />
         </div>

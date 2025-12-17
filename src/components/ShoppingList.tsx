@@ -57,7 +57,11 @@ export function ShoppingList() {
   };
 
   return (
-    <DragProvider>
+    <DragProvider
+      onMoveItem={moveItemToCategory}
+      onMoveCategory={handleMoveCategory}
+      categoryOrder={categoryOrder}
+    >
       <div className="min-h-screen bg-background flex flex-col">
         <Header
           progress={progress}

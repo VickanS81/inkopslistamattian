@@ -62,7 +62,11 @@ export function ShoppingListDB() {
   };
 
   return (
-    <DragProvider>
+    <DragProvider 
+      onMoveItem={moveItemToCategory}
+      onMoveCategory={handleMoveCategory}
+      categoryOrder={categoryOrder}
+    >
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 bg-secondary/30 border-b border-border">
           <div className="flex items-center gap-2">
