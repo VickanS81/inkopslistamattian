@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { CategoryType } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
@@ -13,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { categorizeItem } from '@/utils/categorizeItem';
+import { supabase } from '@/integrations/supabase/client';
+import { SpellSuggestion } from './ShoppingItem';
 
 interface CategoryListProps {
   categoryOrder: CategoryType[];
@@ -21,6 +24,9 @@ interface CategoryListProps {
   onToggleItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategory: CategoryType) => void;
   onMoveCategory: (categoryId: CategoryType, toIndex: number) => void;
+  spellSuggestions: Record<string, SpellSuggestion>;
+  onAcceptSuggestion: (itemId: string, correctedWord: string, category: CategoryType) => void;
+  onRejectSuggestion: (itemId: string) => void;
 }
 
 function CategoryList({ 
@@ -29,7 +35,10 @@ function CategoryList({
   settings, 
   onToggleItem, 
   onMoveItem, 
-  onMoveCategory 
+  onMoveCategory,
+  spellSuggestions,
+  onAcceptSuggestion,
+  onRejectSuggestion
 }: CategoryListProps) {
   const { isDragging } = useDragState();
 
@@ -60,6 +69,9 @@ function CategoryList({
           onToggleItem={onToggleItem}
           onMoveItem={onMoveItem}
           onMoveCategory={onMoveCategory}
+          spellSuggestions={spellSuggestions}
+          onAcceptSuggestion={onAcceptSuggestion}
+          onRejectSuggestion={onRejectSuggestion}
         />
       ))}
     </div>
@@ -86,10 +98,59 @@ export function ShoppingListDB() {
     createList,
     deleteList,
     renameList,
+    updateItemName,
   } = useShoppingListDB();
 
   const { signOut } = useAuth();
   const { settings, updateSettings } = useSettings();
+  const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
+
+  const checkSpelling = useCallback(async (itemId: string, word: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('spell-check', {
+        body: { word }
+      });
+
+      if (error) {
+        console.error('Spell check error:', error);
+        return;
+      }
+
+      if (data?.isMisspelled && data?.correctedWord) {
+        setSpellSuggestions(prev => ({
+          ...prev,
+          [itemId]: {
+            correctedWord: data.correctedWord,
+            category: data.category as CategoryType
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Spell check failed:', err);
+    }
+  }, []);
+
+  const handleAcceptSuggestion = useCallback(async (itemId: string, correctedWord: string, category: CategoryType) => {
+    // Update the item name and category
+    await updateItemName(itemId, correctedWord);
+    if (category !== 'other') {
+      await moveItemToCategory(itemId, category);
+    }
+    // Remove the suggestion
+    setSpellSuggestions(prev => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }, [updateItemName, moveItemToCategory]);
+
+  const handleRejectSuggestion = useCallback((itemId: string) => {
+    setSpellSuggestions(prev => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }, []);
 
   if (isLoading) {
     return (
@@ -102,9 +163,14 @@ export function ShoppingListDB() {
   const hasItems = totalCount > 0;
   const allComplete = hasItems && checkedCount === totalCount;
 
-  const handleAddItem = (name: string) => {
+  const handleAddItem = async (name: string) => {
     const category = settings.autoCategorize ? categorizeItem(name) : 'other';
-    addItem(name, category, '1', 'st');
+    const itemId = await addItem(name, category, '1', 'st');
+    
+    // Check spelling after adding (only if not auto-categorizing)
+    if (!settings.autoCategorize && itemId) {
+      checkSpelling(itemId, name);
+    }
   };
 
   const handleMoveCategory = (categoryId: CategoryType, toIndex: number) => {
@@ -113,6 +179,14 @@ export function ShoppingListDB() {
 
   const handleToggleItem = (itemId: string) => {
     toggleItem(itemId, settings.autoClearChecked);
+    // Remove spell suggestion when item is toggled
+    if (spellSuggestions[itemId]) {
+      setSpellSuggestions(prev => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+    }
   };
 
   const handleReset = () => {
@@ -174,6 +248,9 @@ export function ShoppingListDB() {
               onToggleItem={handleToggleItem}
               onMoveItem={moveItemToCategory}
               onMoveCategory={handleMoveCategory}
+              spellSuggestions={spellSuggestions}
+              onAcceptSuggestion={handleAcceptSuggestion}
+              onRejectSuggestion={handleRejectSuggestion}
             />
           )}
         </main>

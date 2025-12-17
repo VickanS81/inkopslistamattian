@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, GripVertical } from 'lucide-react';
 import { ShoppingItem as ShoppingItemType, CategoryType, getCategoryInfo } from '@/types/shopping';
-import { ShoppingItem } from './ShoppingItem';
+import { ShoppingItem, SpellSuggestion } from './ShoppingItem';
 import { useDragState } from '@/contexts/DragContext';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -14,9 +14,22 @@ interface CategoryGroupProps {
   onToggleItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategory: CategoryType) => void;
   onMoveCategory: (categoryId: CategoryType, toIndex: number) => void;
+  spellSuggestions?: Record<string, SpellSuggestion>;
+  onAcceptSuggestion?: (itemId: string, correctedWord: string, category: CategoryType) => void;
+  onRejectSuggestion?: (itemId: string) => void;
 }
 
-export function CategoryGroup({ category, items, index, onToggleItem, onMoveItem, onMoveCategory }: CategoryGroupProps) {
+export function CategoryGroup({ 
+  category, 
+  items, 
+  index, 
+  onToggleItem, 
+  onMoveItem, 
+  onMoveCategory,
+  spellSuggestions,
+  onAcceptSuggestion,
+  onRejectSuggestion
+}: CategoryGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const categoryInfo = getCategoryInfo(category);
   const { activeId, activeType, overCategoryId } = useDragState();
@@ -146,7 +159,13 @@ export function CategoryGroup({ category, items, index, onToggleItem, onMoveItem
                   transition={{ delay: itemIndex * 0.03 }}
                   layout
                 >
-                  <ShoppingItem item={item} onToggle={onToggleItem} />
+                  <ShoppingItem 
+                    item={item} 
+                    onToggle={onToggleItem}
+                    spellSuggestion={spellSuggestions?.[item.id]}
+                    onAcceptSuggestion={onAcceptSuggestion}
+                    onRejectSuggestion={onRejectSuggestion}
+                  />
                 </motion.div>
               ))}
             </div>
