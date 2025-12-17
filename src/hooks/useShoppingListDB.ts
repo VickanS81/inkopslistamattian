@@ -220,13 +220,31 @@ export function useShoppingListDB() {
   );
 
   const toggleItem = useCallback(
-    async (itemId: string) => {
+    async (itemId: string, autoDelete = false) => {
       if (!user) return;
 
       const item = items.find((i) => i.id === itemId);
       if (!item) return;
 
       const newChecked = !item.checked;
+
+      // If auto-delete is enabled and item is being checked, delete it instead
+      if (autoDelete && newChecked) {
+        // Optimistic update
+        setItems((prev) => prev.filter((i) => i.id !== itemId));
+        
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .eq('id', itemId);
+
+        if (error) {
+          console.error('Error deleting item:', error);
+          // Restore item on error
+          setItems((prev) => [...prev, item]);
+        }
+        return;
+      }
 
       const { error } = await supabase
         .from('shopping_items')

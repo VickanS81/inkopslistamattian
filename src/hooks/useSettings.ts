@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 
 export interface AppSettings {
   autoCategorize: boolean;
+  autoClearChecked: boolean;
 }
 
 const SETTINGS_KEY = 'shopping-app-settings';
 
 const defaultSettings: AppSettings = {
   autoCategorize: false,
+  autoClearChecked: false,
 };
 
 export function useSettings() {

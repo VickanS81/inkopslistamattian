@@ -56,6 +56,10 @@ export function ShoppingListDB() {
     moveCategoryById(categoryId, toIndex);
   };
 
+  const handleToggleItem = (itemId: string) => {
+    toggleItem(itemId, settings.autoClearChecked);
+  };
+
   const handleReset = () => {
     // In DB version, reset clears all items
     clearChecked();
@@ -111,7 +115,7 @@ export function ShoppingListDB() {
                   category={categoryId as CategoryType}
                   items={groupedItems[categoryId as CategoryType] || []}
                   index={index}
-                  onToggleItem={toggleItem}
+                  onToggleItem={handleToggleItem}
                   onMoveItem={moveItemToCategory}
                   onMoveCategory={handleMoveCategory}
                 />

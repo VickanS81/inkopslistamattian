@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -27,6 +28,7 @@ export function SettingsDialog({ settings, onUpdateSettings }: SettingsDialogPro
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Inställningar</DialogTitle>
+          <DialogDescription>Anpassa hur din inköpslista fungerar</DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">
           <div className="flex items-center justify-between gap-4">
@@ -37,13 +39,31 @@ export function SettingsDialog({ settings, onUpdateSettings }: SettingsDialogPro
               <p className="text-sm text-muted-foreground">
                 {settings.autoCategorize
                   ? 'Nya varor placeras automatiskt i rätt kategori'
-                  : 'Du placerar själv varorna i rätt kategori genom att dra dem'}
+                  : 'Du placerar själv varorna i rätt kategori'}
               </p>
             </div>
             <Switch
               id="auto-categorize"
               checked={settings.autoCategorize}
               onCheckedChange={(checked) => onUpdateSettings({ autoCategorize: checked })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="auto-clear" className="text-base font-medium">
+                Rensa automatiskt avbockade
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {settings.autoClearChecked
+                  ? 'Avbockade varor tas bort direkt från listan'
+                  : 'Avbockade varor stannar kvar tills du rensar dem'}
+              </p>
+            </div>
+            <Switch
+              id="auto-clear"
+              checked={settings.autoClearChecked}
+              onCheckedChange={(checked) => onUpdateSettings({ autoClearChecked: checked })}
             />
           </div>
         </div>
