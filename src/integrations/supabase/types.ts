@@ -14,13 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      category_order: {
+        Row: {
+          category_order: string[]
+          id: string
+          list_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_order?: string[]
+          id?: string
+          list_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_order?: string[]
+          id?: string
+          list_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_order_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      list_members: {
+        Row: {
+          id: string
+          joined_at: string
+          list_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          list_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_members_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shopping_items: {
+        Row: {
+          category: string
+          checked: boolean
+          checked_at: string | null
+          checked_by: string | null
+          created_at: string
+          created_by: string
+          id: string
+          list_id: string
+          name: string
+          quantity: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          checked?: boolean
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          list_id: string
+          name: string
+          quantity?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          checked?: boolean
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          list_id?: string
+          name?: string
+          quantity?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_lists: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          share_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id: string
+          share_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          share_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_list_member: { Args: { list_uuid: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
