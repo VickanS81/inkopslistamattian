@@ -3,15 +3,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingCart, Users } from 'lucide-react';
+import { ShoppingCart, Users, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+interface ListInfo {
+  name: string;
+  ownerName: string;
+}
 
 export default function JoinList() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [listName, setListName] = useState<string | null>(null);
+  const [listInfo, setListInfo] = useState<ListInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +36,7 @@ export default function JoinList() {
 
   const fetchListInfo = async () => {
     try {
-      // First check if user is already a member
+      // Fetch list with owner info
       const { data: list, error: listError } = await supabase
         .from('shopping_lists')
         .select('id, name, owner_id')
@@ -41,7 +46,7 @@ export default function JoinList() {
       if (listError) throw listError;
       
       if (!list) {
-        setError('Listan hittades inte. Kontrollera att koden är korrekt.');
+        setError('Listan hittades inte. Kontrollera att länken är korrekt.');
         setIsLoading(false);
         return;
       }
@@ -67,7 +72,17 @@ export default function JoinList() {
         return;
       }
 
-      setListName(list.name);
+      // Fetch owner's profile name
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', list.owner_id)
+        .maybeSingle();
+
+      setListInfo({
+        name: list.name,
+        ownerName: ownerProfile?.display_name || 'Någon',
+      });
       setIsLoading(false);
     } catch (err) {
       console.error('Error fetching list:', err);
@@ -99,7 +114,7 @@ export default function JoinList() {
 
       toast({
         title: 'Välkommen!',
-        description: `Du är nu med i "${listName}".`,
+        description: `Du är nu med i "${listInfo?.name}".`,
       });
       
       localStorage.removeItem('pending_share_code');
@@ -139,12 +154,23 @@ export default function JoinList() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="bg-secondary/30 rounded-2xl p-8 max-w-sm w-full text-center">
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-primary" />
+          <UserPlus className="w-8 h-8 text-primary" />
         </div>
         
-        <h1 className="text-xl font-semibold mb-2">Gå med i lista</h1>
-        <p className="text-muted-foreground mb-6">
-          Du har blivit inbjuden till listan <strong>"{listName}"</strong>
+        <h1 className="text-xl font-semibold mb-4">Inbjudan till lista</h1>
+        
+        <div className="bg-background/50 rounded-xl p-4 mb-6">
+          <p className="text-muted-foreground text-sm mb-2">
+            <span className="font-medium text-foreground">{listInfo?.ownerName}</span> vill dela listan
+          </p>
+          <p className="text-lg font-semibold text-foreground flex items-center justify-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            {listInfo?.name}
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-6">
+          Acceptera inbjudan för att kunna se och redigera listan tillsammans.
         </p>
 
         <div className="space-y-3">
@@ -153,7 +179,7 @@ export default function JoinList() {
             className="w-full" 
             disabled={isJoining}
           >
-            {isJoining ? 'Går med...' : 'Gå med i listan'}
+            {isJoining ? 'Går med...' : 'Acceptera inbjudan'}
           </Button>
           
           <Button 
@@ -161,7 +187,7 @@ export default function JoinList() {
             onClick={() => navigate('/')} 
             className="w-full"
           >
-            Avbryt
+            Avböj
           </Button>
         </div>
       </div>
