@@ -40,23 +40,15 @@ export function ShoppingListDB() {
   const hasItems = totalCount > 0;
   const allComplete = hasItems && checkedCount === totalCount;
 
-  // Get categories in user's custom order, but only those with items
-  const orderedCategories = categoryOrder.filter((catId) => {
-    if (catId === 'other') {
-      return hasItems || (groupedItems[catId]?.length ?? 0) > 0;
-    }
-    return (groupedItems[catId]?.length ?? 0) > 0;
-  });
+  // Show all categories in user's custom order (always visible for drag-drop)
+  const orderedCategories = categoryOrder;
 
   const handleAddItem = (name: string) => {
     addItem(name, 'other', '1', 'st');
   };
 
   const handleMoveCategory = (categoryId: CategoryType, toIndex: number) => {
-    const visibleCategories = orderedCategories;
-    const targetCategory = visibleCategories[toIndex] || visibleCategories[visibleCategories.length - 1];
-    const targetIndex = categoryOrder.indexOf(targetCategory);
-    moveCategoryById(categoryId, targetIndex);
+    moveCategoryById(categoryId, toIndex);
   };
 
   const handleReset = () => {
@@ -99,9 +91,7 @@ export function ShoppingListDB() {
         <AddItemInput onAddItem={handleAddItem} />
 
         <main className="flex-1 pb-safe-bottom">
-          {!hasItems ? (
-            <EmptyState type="empty" onReset={handleReset} />
-          ) : allComplete ? (
+          {allComplete && hasItems ? (
             <EmptyState type="complete" onReset={handleReset} />
           ) : (
             <div className="divide-y divide-border">
