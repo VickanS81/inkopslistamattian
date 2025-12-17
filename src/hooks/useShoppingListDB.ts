@@ -27,9 +27,12 @@ export interface DBShoppingList {
   updated_at: string;
 }
 
+const SELECTED_LIST_KEY = 'shopping-selected-list';
+
 export function useShoppingListDB() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [allLists, setAllLists] = useState<DBShoppingList[]>([]);
   const [currentList, setCurrentList] = useState<DBShoppingList | null>(null);
   const [items, setItems] = useState<DBShoppingItem[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<CategoryType[]>(
@@ -38,84 +41,69 @@ export function useShoppingListDB() {
   const [isLoading, setIsLoading] = useState(true);
   const [members, setMembers] = useState<{ id: string; display_name: string | null }[]>([]);
 
-  // Fetch or create the user's default list
+  // Fetch all lists and select one
   useEffect(() => {
     if (!user) {
       setIsLoading(false);
       return;
     }
 
-    const fetchList = async () => {
+    const fetchAllLists = async () => {
       try {
-        // First try to get a list the user owns or is member of
+        // Get all owned lists
         const { data: ownedLists, error: ownedError } = await supabase
           .from('shopping_lists')
           .select('*')
           .eq('owner_id', user.id)
-          .limit(1);
+          .order('created_at', { ascending: true });
 
         if (ownedError) throw ownedError;
 
-        let list = ownedLists?.[0];
+        // Get all lists user is member of
+        const { data: memberLists, error: memberError } = await supabase
+          .from('list_members')
+          .select('list_id, shopping_lists(*)')
+          .eq('user_id', user.id);
 
-        if (!list) {
-          // Check if user is member of any list
-          const { data: memberLists, error: memberError } = await supabase
-            .from('list_members')
-            .select('list_id, shopping_lists(*)')
-            .eq('user_id', user.id)
-            .limit(1);
+        if (memberError) throw memberError;
 
-          if (memberError) throw memberError;
+        const sharedLists = memberLists
+          ?.map(m => m.shopping_lists as unknown as DBShoppingList)
+          .filter(Boolean) || [];
 
-          if (memberLists?.[0]?.shopping_lists) {
-            list = memberLists[0].shopping_lists as unknown as DBShoppingList;
+        const allUserLists = [...(ownedLists || []), ...sharedLists];
+        setAllLists(allUserLists);
+
+        // Try to restore previously selected list
+        const savedListId = localStorage.getItem(SELECTED_LIST_KEY);
+        let selectedList = savedListId 
+          ? allUserLists.find(l => l.id === savedListId) 
+          : null;
+
+        // If no saved list or saved list not found, use first list or create one
+        if (!selectedList) {
+          if (allUserLists.length > 0) {
+            selectedList = allUserLists[0];
+          } else {
+            // Create a new default list
+            const { data: newList, error: createError } = await supabase
+              .from('shopping_lists')
+              .insert({ owner_id: user.id, name: 'Min lista' })
+              .select()
+              .single();
+
+            if (createError) throw createError;
+            selectedList = newList;
+            setAllLists([newList]);
           }
         }
 
-        if (!list) {
-          // Create a new list for the user
-          const { data: newList, error: createError } = await supabase
-            .from('shopping_lists')
-            .insert({ owner_id: user.id, name: 'Min lista' })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          list = newList;
-        }
-
-        setCurrentList(list);
-
-        // Fetch items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('shopping_items')
-          .select('*')
-          .eq('list_id', list.id)
-          .order('created_at', { ascending: true });
-
-        if (itemsError) throw itemsError;
-        setItems(itemsData || []);
-
-        // Fetch category order
-        const { data: orderData } = await supabase
-          .from('category_order')
-          .select('category_order')
-          .eq('list_id', list.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (orderData?.category_order) {
-          setCategoryOrder(orderData.category_order as CategoryType[]);
-        }
-
-        // Fetch members
-        await fetchMembers(list.id);
+        await selectList(selectedList);
 
       } catch (error) {
-        console.error('Error fetching list:', error);
+        console.error('Error fetching lists:', error);
         toast({
-          title: 'Kunde inte ladda listan',
+          title: 'Kunde inte ladda listorna',
           variant: 'destructive',
         });
       } finally {
@@ -123,8 +111,45 @@ export function useShoppingListDB() {
       }
     };
 
-    fetchList();
+    fetchAllLists();
   }, [user, toast]);
+
+  const selectList = async (list: DBShoppingList) => {
+    if (!user) return;
+
+    setCurrentList(list);
+    localStorage.setItem(SELECTED_LIST_KEY, list.id);
+
+    // Fetch items for this list
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('shopping_items')
+      .select('*')
+      .eq('list_id', list.id)
+      .order('created_at', { ascending: true });
+
+    if (itemsError) {
+      console.error('Error fetching items:', itemsError);
+    } else {
+      setItems(itemsData || []);
+    }
+
+    // Fetch category order for this list
+    const { data: orderData } = await supabase
+      .from('category_order')
+      .select('category_order')
+      .eq('list_id', list.id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (orderData?.category_order) {
+      setCategoryOrder(orderData.category_order as CategoryType[]);
+    } else {
+      setCategoryOrder(CATEGORIES.map(c => c.id));
+    }
+
+    // Fetch members
+    await fetchMembers(list.id);
+  };
 
   const fetchMembers = async (listId: string) => {
     if (!user) return;
@@ -197,6 +222,102 @@ export function useShoppingListDB() {
       supabase.removeChannel(channel);
     };
   }, [currentList]);
+
+  const createList = useCallback(
+    async (name: string) => {
+      if (!user) return null;
+
+      const { data: newList, error } = await supabase
+        .from('shopping_lists')
+        .insert({ owner_id: user.id, name })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating list:', error);
+        toast({ title: 'Kunde inte skapa listan', variant: 'destructive' });
+        return null;
+      }
+
+      setAllLists((prev) => [...prev, newList]);
+      await selectList(newList);
+      toast({ title: `Lista "${name}" skapad` });
+      return newList;
+    },
+    [user, toast]
+  );
+
+  const deleteList = useCallback(
+    async (listId: string) => {
+      if (!user) return;
+
+      const listToDelete = allLists.find(l => l.id === listId);
+      if (!listToDelete) return;
+
+      // Can't delete if it's not owned by user
+      if (listToDelete.owner_id !== user.id) {
+        toast({ title: 'Du kan bara ta bort dina egna listor', variant: 'destructive' });
+        return;
+      }
+
+      // Can't delete last list
+      const ownedLists = allLists.filter(l => l.owner_id === user.id);
+      if (ownedLists.length <= 1) {
+        toast({ title: 'Du måste ha minst en lista', variant: 'destructive' });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('shopping_lists')
+        .delete()
+        .eq('id', listId);
+
+      if (error) {
+        console.error('Error deleting list:', error);
+        toast({ title: 'Kunde inte ta bort listan', variant: 'destructive' });
+        return;
+      }
+
+      const remainingLists = allLists.filter(l => l.id !== listId);
+      setAllLists(remainingLists);
+
+      // If we deleted the current list, switch to another one
+      if (currentList?.id === listId && remainingLists.length > 0) {
+        await selectList(remainingLists[0]);
+      }
+
+      toast({ title: `Lista "${listToDelete.name}" borttagen` });
+    },
+    [user, allLists, currentList, toast]
+  );
+
+  const renameList = useCallback(
+    async (listId: string, newName: string) => {
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('shopping_lists')
+        .update({ name: newName })
+        .eq('id', listId);
+
+      if (error) {
+        console.error('Error renaming list:', error);
+        toast({ title: 'Kunde inte byta namn på listan', variant: 'destructive' });
+        return;
+      }
+
+      setAllLists((prev) =>
+        prev.map((l) => (l.id === listId ? { ...l, name: newName } : l))
+      );
+
+      if (currentList?.id === listId) {
+        setCurrentList((prev) => prev ? { ...prev, name: newName } : null);
+      }
+
+      toast({ title: 'Listnamn uppdaterat' });
+    },
+    [user, currentList, toast]
+  );
 
   const addItem = useCallback(
     async (name: string, category: CategoryType = 'other', quantity = '1', unit?: string) => {
@@ -359,6 +480,7 @@ export function useShoppingListDB() {
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
 
   return {
+    allLists,
     currentList,
     groupedItems,
     categoryOrder,
@@ -372,5 +494,9 @@ export function useShoppingListDB() {
     totalCount,
     progress,
     members,
+    selectList,
+    createList,
+    deleteList,
+    renameList,
   };
 }

@@ -5,6 +5,7 @@ import { EmptyState } from './EmptyState';
 import { AddItemInput } from './AddItemInput';
 import { ShareDialog } from './ShareDialog';
 import { SettingsDialog } from './SettingsDialog';
+import { ListSelector } from './ListSelector';
 import { useShoppingListDB } from '@/hooks/useShoppingListDB';
 import { useSettings, AppSettings } from '@/hooks/useSettings';
 import { DragProvider, useDragState } from '@/contexts/DragContext';
@@ -67,6 +68,7 @@ function CategoryList({
 
 export function ShoppingListDB() {
   const {
+    allLists,
     currentList,
     groupedItems,
     categoryOrder,
@@ -80,6 +82,10 @@ export function ShoppingListDB() {
     totalCount,
     progress,
     members,
+    selectList,
+    createList,
+    deleteList,
+    renameList,
   } = useShoppingListDB();
 
   const { signOut } = useAuth();
@@ -121,14 +127,19 @@ export function ShoppingListDB() {
     >
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 bg-secondary/30 border-b border-border">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ListSelector
+              allLists={allLists}
+              currentList={currentList}
+              onSelectList={selectList}
+              onCreateList={createList}
+              onDeleteList={deleteList}
+              onRenameList={renameList}
+            />
             {currentList && (
               <ShareDialog shareCode={currentList.share_code} members={members} />
             )}
             <SettingsDialog settings={settings} onUpdateSettings={updateSettings} />
-            <span className="text-sm text-muted-foreground">
-              {currentList?.name}
-            </span>
           </div>
           <Button
             variant="ghost"
