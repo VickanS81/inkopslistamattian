@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 export interface AppSettings {
   autoCategorize: boolean;
   autoClearChecked: boolean;
+  showOnlyCategoriesWithItems: boolean;
 }
 
 const SETTINGS_KEY = 'shopping-app-settings';
@@ -10,6 +11,7 @@ const SETTINGS_KEY = 'shopping-app-settings';
 const defaultSettings: AppSettings = {
   autoCategorize: false,
   autoClearChecked: false,
+  showOnlyCategoriesWithItems: false,
 };
 
 export function useSettings() {
