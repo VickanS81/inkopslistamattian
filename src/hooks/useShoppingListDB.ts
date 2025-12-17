@@ -385,6 +385,19 @@ export function useShoppingListDB() {
 
   const moveItemToCategory = useCallback(
     async (itemId: string, newCategory: CategoryType) => {
+      // Find the item first
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
+      
+      const oldCategory = item.category;
+      
+      // Optimistic update - immediately update local state
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === itemId ? { ...i, category: newCategory } : i
+        )
+      );
+
       const { error } = await supabase
         .from('shopping_items')
         .update({ category: newCategory })
@@ -392,9 +405,15 @@ export function useShoppingListDB() {
 
       if (error) {
         console.error('Error moving item:', error);
+        // Revert on error
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === itemId ? { ...i, category: oldCategory } : i
+          )
+        );
       }
     },
-    []
+    [items]
   );
 
   const clearChecked = useCallback(async () => {
