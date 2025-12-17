@@ -1,7 +1,8 @@
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check, GripVertical } from 'lucide-react';
 import { ShoppingItem as ShoppingItemType } from '@/types/shopping';
 import { useRef } from 'react';
+import { useDragContext } from '@/contexts/DragContext';
 
 interface ShoppingItemProps {
   item: ShoppingItemType;
@@ -11,6 +12,7 @@ interface ShoppingItemProps {
 export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
   const x = useMotionValue(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { setDraggedItemId } = useDragContext();
   
   // Transform for the check indicator background
   const checkBgOpacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
@@ -22,6 +24,26 @@ export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
     if (Math.abs(info.offset.x) > threshold) {
       onToggle(item.id);
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('itemId', item.id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedItemId(item.id);
+    
+    // Create a custom drag image
+    const dragImage = document.createElement('div');
+    dragImage.textContent = item.name;
+    dragImage.className = 'px-3 py-2 bg-card rounded-lg shadow-lg text-sm font-medium';
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1000px';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  };
+
+  const handleDragEndNative = () => {
+    setDraggedItemId(null);
   };
 
   return (
@@ -48,11 +70,21 @@ export function ShoppingItem({ item, onToggle }: ShoppingItemProps) {
         onDragEnd={handleDragEnd}
         style={{ x }}
         className={`
-          relative flex items-center gap-3 px-4 py-3 bg-card cursor-grab active:cursor-grabbing
+          relative flex items-center gap-2 px-4 py-3 bg-card
           transition-colors duration-200 touch-target
           ${item.checked ? 'bg-checked-bg' : ''}
         `}
       >
+        {/* Drag handle */}
+        <div
+          draggable
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEndNative}
+          className="flex-shrink-0 p-1 -ml-2 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <GripVertical className="w-5 h-5 text-muted-foreground/50" />
+        </div>
+
         {/* Checkbox */}
         <button
           onClick={() => onToggle(item.id)}
