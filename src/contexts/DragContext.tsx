@@ -16,12 +16,14 @@ interface DragContextType {
   activeId: string | null;
   activeType: 'item' | 'category' | null;
   overCategoryId: CategoryType | null;
+  isDragging: boolean;
 }
 
 const DragStateContext = createContext<DragContextType>({
   activeId: null,
   activeType: null,
   overCategoryId: null,
+  isDragging: false,
 });
 
 interface DragProviderProps {
@@ -126,7 +128,7 @@ export function DragProvider({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <DragStateContext.Provider value={{ activeId, activeType, overCategoryId }}>
+      <DragStateContext.Provider value={{ activeId, activeType, overCategoryId, isDragging: activeId !== null }}>
         {children}
       </DragStateContext.Provider>
     </DndContext>

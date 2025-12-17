@@ -66,6 +66,24 @@ export function SettingsDialog({ settings, onUpdateSettings }: SettingsDialogPro
               onCheckedChange={(checked) => onUpdateSettings({ autoClearChecked: checked })}
             />
           </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="show-only-with-items" className="text-base font-medium">
+                Visa endast kategorier med varor
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {settings.showOnlyCategoriesWithItems
+                  ? 'Endast kategorier med varor visas (alla visas vid drag)'
+                  : 'Alla kategorier visas alltid'}
+              </p>
+            </div>
+            <Switch
+              id="show-only-with-items"
+              checked={settings.showOnlyCategoriesWithItems}
+              onCheckedChange={(checked) => onUpdateSettings({ showOnlyCategoriesWithItems: checked })}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

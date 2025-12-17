@@ -6,12 +6,64 @@ import { AddItemInput } from './AddItemInput';
 import { ShareDialog } from './ShareDialog';
 import { SettingsDialog } from './SettingsDialog';
 import { useShoppingListDB } from '@/hooks/useShoppingListDB';
-import { useSettings } from '@/hooks/useSettings';
-import { DragProvider } from '@/contexts/DragContext';
+import { useSettings, AppSettings } from '@/hooks/useSettings';
+import { DragProvider, useDragState } from '@/contexts/DragContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { categorizeItem } from '@/utils/categorizeItem';
+
+interface CategoryListProps {
+  categoryOrder: CategoryType[];
+  groupedItems: Record<CategoryType, any[]>;
+  settings: AppSettings;
+  onToggleItem: (id: string) => void;
+  onMoveItem: (itemId: string, newCategory: CategoryType) => void;
+  onMoveCategory: (categoryId: CategoryType, toIndex: number) => void;
+}
+
+function CategoryList({ 
+  categoryOrder, 
+  groupedItems, 
+  settings, 
+  onToggleItem, 
+  onMoveItem, 
+  onMoveCategory 
+}: CategoryListProps) {
+  const { isDragging } = useDragState();
+
+  // Filter categories based on settings
+  const getVisibleCategories = () => {
+    if (!settings.showOnlyCategoriesWithItems || isDragging) {
+      // Show all categories when setting is off or when dragging
+      return categoryOrder;
+    }
+    
+    // Show only categories with items + always show 'other'
+    return categoryOrder.filter((catId) => {
+      if (catId === 'other') return true;
+      return (groupedItems[catId as CategoryType]?.length ?? 0) > 0;
+    });
+  };
+
+  const visibleCategories = getVisibleCategories();
+
+  return (
+    <div className="divide-y divide-border">
+      {visibleCategories.map((categoryId, index) => (
+        <CategoryGroup
+          key={categoryId}
+          category={categoryId as CategoryType}
+          items={groupedItems[categoryId as CategoryType] || []}
+          index={index}
+          onToggleItem={onToggleItem}
+          onMoveItem={onMoveItem}
+          onMoveCategory={onMoveCategory}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function ShoppingListDB() {
   const {
@@ -30,7 +82,7 @@ export function ShoppingListDB() {
     members,
   } = useShoppingListDB();
 
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { settings, updateSettings } = useSettings();
 
   if (isLoading) {
@@ -43,9 +95,6 @@ export function ShoppingListDB() {
 
   const hasItems = totalCount > 0;
   const allComplete = hasItems && checkedCount === totalCount;
-
-  // Show all categories in user's custom order (always visible for drag-drop)
-  const orderedCategories = categoryOrder;
 
   const handleAddItem = (name: string) => {
     const category = settings.autoCategorize ? categorizeItem(name) : 'other';
@@ -61,7 +110,6 @@ export function ShoppingListDB() {
   };
 
   const handleReset = () => {
-    // In DB version, reset clears all items
     clearChecked();
   };
 
@@ -108,19 +156,14 @@ export function ShoppingListDB() {
           {allComplete && hasItems ? (
             <EmptyState type="complete" onReset={handleReset} />
           ) : (
-            <div className="divide-y divide-border">
-              {orderedCategories.map((categoryId, index) => (
-                <CategoryGroup
-                  key={categoryId}
-                  category={categoryId as CategoryType}
-                  items={groupedItems[categoryId as CategoryType] || []}
-                  index={index}
-                  onToggleItem={handleToggleItem}
-                  onMoveItem={moveItemToCategory}
-                  onMoveCategory={handleMoveCategory}
-                />
-              ))}
-            </div>
+            <CategoryList
+              categoryOrder={categoryOrder}
+              groupedItems={groupedItems}
+              settings={settings}
+              onToggleItem={handleToggleItem}
+              onMoveItem={moveItemToCategory}
+              onMoveCategory={handleMoveCategory}
+            />
           )}
         </main>
 
