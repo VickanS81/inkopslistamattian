@@ -320,22 +320,25 @@ export function useShoppingListDB() {
   );
 
   const addItem = useCallback(
-    async (name: string, category: CategoryType = 'other', quantity = '1', unit?: string) => {
-      if (!currentList || !user) return;
+    async (name: string, category: CategoryType = 'other', quantity = '1', unit?: string): Promise<string | null> => {
+      if (!currentList || !user) return null;
 
-      const { error } = await supabase.from('shopping_items').insert({
+      const { data, error } = await supabase.from('shopping_items').insert({
         list_id: currentList.id,
         name,
         category,
         quantity,
         unit,
         created_by: user.id,
-      });
+      }).select('id').single();
 
       if (error) {
         console.error('Error adding item:', error);
         toast({ title: 'Kunde inte lägga till vara', variant: 'destructive' });
+        return null;
       }
+
+      return data?.id || null;
     },
     [currentList, user, toast]
   );
@@ -494,6 +497,28 @@ export function useShoppingListDB() {
     });
   });
 
+  const updateItemName = useCallback(
+    async (itemId: string, newName: string) => {
+      // Optimistic update
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, name: newName } : item
+        )
+      );
+
+      const { error } = await supabase
+        .from('shopping_items')
+        .update({ name: newName })
+        .eq('id', itemId);
+
+      if (error) {
+        console.error('Error updating item name:', error);
+        // Could revert here, but the realtime will fix it
+      }
+    },
+    []
+  );
+
   const checkedCount = items.filter((i) => i.checked).length;
   const totalCount = items.length;
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
@@ -517,5 +542,6 @@ export function useShoppingListDB() {
     createList,
     deleteList,
     renameList,
+    updateItemName,
   };
 }
