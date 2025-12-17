@@ -28,10 +28,7 @@ export function Header({
       <div className="px-4 py-3">
         {/* Top row */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🛒</span>
-            <h1 className="text-xl font-bold text-foreground">Handla</h1>
-          </div>
+          <div className="flex items-center gap-2" />
           
           <div className="flex items-center gap-1">
             <button
