@@ -36,20 +36,19 @@ export default function JoinList() {
 
   const fetchListInfo = async () => {
     try {
-      // Fetch list with owner info
-      const { data: list, error: listError } = await supabase
-        .from('shopping_lists')
-        .select('id, name, owner_id')
-        .eq('share_code', shareCode)
-        .maybeSingle();
+      // Use the SECURITY DEFINER function to get list info (bypasses RLS for invite flow)
+      const { data: inviteInfo, error: inviteError } = await supabase
+        .rpc('get_list_invite_info', { share_code_param: shareCode });
 
-      if (listError) throw listError;
+      if (inviteError) throw inviteError;
       
-      if (!list) {
+      if (!inviteInfo || inviteInfo.length === 0) {
         setError('Listan hittades inte. Kontrollera att länken är korrekt.');
         setIsLoading(false);
         return;
       }
+
+      const list = inviteInfo[0];
 
       // Check if user is already owner
       if (list.owner_id === user?.id) {
@@ -62,7 +61,7 @@ export default function JoinList() {
       const { data: membership } = await supabase
         .from('list_members')
         .select('id')
-        .eq('list_id', list.id)
+        .eq('list_id', list.list_id)
         .eq('user_id', user?.id)
         .maybeSingle();
 
@@ -72,16 +71,9 @@ export default function JoinList() {
         return;
       }
 
-      // Fetch owner's profile name
-      const { data: ownerProfile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', list.owner_id)
-        .maybeSingle();
-
       setListInfo({
-        name: list.name,
-        ownerName: ownerProfile?.display_name || 'Någon',
+        name: list.list_name,
+        ownerName: list.owner_name,
       });
       setIsLoading(false);
     } catch (err) {
