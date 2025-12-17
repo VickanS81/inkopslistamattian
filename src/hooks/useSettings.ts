@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export interface AppSettings {
   autoCategorize: boolean;
@@ -14,26 +14,33 @@ const defaultSettings: AppSettings = {
   showOnlyCategoriesWithItems: false,
 };
 
-export function useSettings() {
-  const [settings, setSettings] = useState<AppSettings>(() => {
+function getInitialSettings(): AppSettings {
+  if (typeof window === 'undefined') return defaultSettings;
+  try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
-      try {
-        return { ...defaultSettings, ...JSON.parse(stored) };
-      } catch {
-        return defaultSettings;
-      }
+      return { ...defaultSettings, ...JSON.parse(stored) };
     }
-    return defaultSettings;
-  });
+  } catch {
+    // Ignore parse errors
+  }
+  return defaultSettings;
+}
+
+export function useSettings() {
+  const [settings, setSettings] = useState<AppSettings>(getInitialSettings);
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // Ignore storage errors
+    }
   }, [settings]);
 
-  const updateSettings = (updates: Partial<AppSettings>) => {
+  const updateSettings = useCallback((updates: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   return { settings, updateSettings };
 }
