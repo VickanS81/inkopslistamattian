@@ -3,35 +3,71 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { ShoppingItem as ShoppingItemType, CategoryType, getCategoryInfo } from '@/types/shopping';
 import { ShoppingItem } from './ShoppingItem';
+import { useDragContext } from '@/contexts/DragContext';
 
 interface CategoryGroupProps {
   category: CategoryType;
   items: ShoppingItemType[];
   onToggleItem: (id: string) => void;
+  onMoveItem: (itemId: string, newCategory: CategoryType) => void;
 }
 
-export function CategoryGroup({ category, items, onToggleItem }: CategoryGroupProps) {
+export function CategoryGroup({ category, items, onToggleItem, onMoveItem }: CategoryGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isDragOver, setIsDragOver] = useState(false);
   const categoryInfo = getCategoryInfo(category);
+  const { draggedItemId, setDropTargetCategory } = useDragContext();
   
   const uncheckedCount = items.filter(i => !i.checked).length;
   const totalCount = items.length;
-  const allChecked = uncheckedCount === 0;
+  const allChecked = totalCount > 0 && uncheckedCount === 0;
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+    setDropTargetCategory(category);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only set to false if we're leaving the category entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+      setDropTargetCategory(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const itemId = e.dataTransfer.getData('itemId');
+    if (itemId) {
+      onMoveItem(itemId, category);
+    }
+    setIsDragOver(false);
+    setDropTargetCategory(null);
+  };
 
   return (
     <motion.div 
-      className="animate-slide-up"
+      className={`transition-all duration-200 ${isDragOver ? 'ring-2 ring-primary ring-inset' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Category header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={`
-          w-full flex items-center gap-3 px-4 py-3 bg-secondary/50 
+          w-full flex items-center gap-3 px-4 py-3 
           sticky top-0 z-10 backdrop-blur-sm touch-target
-          transition-colors duration-200
+          transition-all duration-200
+          ${isDragOver 
+            ? 'bg-primary/20' 
+            : 'bg-secondary/50'
+          }
           ${allChecked ? 'opacity-60' : ''}
         `}
       >
@@ -45,6 +81,12 @@ export function CategoryGroup({ category, items, onToggleItem }: CategoryGroupPr
         `}>
           {categoryInfo.name}
         </span>
+        
+        {isDragOver && draggedItemId && (
+          <span className="text-xs font-medium text-primary bg-primary/20 px-2 py-1 rounded-full animate-pulse">
+            Släpp här
+          </span>
+        )}
         
         <span className={`
           text-sm font-medium px-2 py-0.5 rounded-full

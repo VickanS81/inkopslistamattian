@@ -33,7 +33,9 @@ export interface CategoryInfo {
   icon: string;
 }
 
+// Order matters - "other" first so new items appear at top
 export const CATEGORIES: CategoryInfo[] = [
+  { id: 'other', name: 'Övrigt', icon: '📦' },
   { id: 'vegetables', name: 'Frukt & Grönsaker', icon: '🥬' },
   { id: 'dairy', name: 'Mejeri', icon: '🥛' },
   { id: 'meat', name: 'Kött', icon: '🥩' },
@@ -43,9 +45,8 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'frozen', name: 'Fryst', icon: '❄️' },
   { id: 'bakery', name: 'Bröd & Bageri', icon: '🥖' },
   { id: 'drinks', name: 'Drycker', icon: '🥤' },
-  { id: 'other', name: 'Övrigt', icon: '📦' },
 ];
 
 export const getCategoryInfo = (categoryId: CategoryType): CategoryInfo => {
-  return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
+  return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[0];
 };

@@ -91,7 +91,7 @@ export function useShoppingList() {
     });
   }, []);
 
-  const addItem = useCallback((name: string, category: CategoryType, quantity: string = '1', unit?: string) => {
+  const addItem = useCallback((name: string, category: CategoryType = 'other', quantity: string = '1', unit?: string) => {
     setList(prev => {
       if (!prev) return prev;
       const newItem: ShoppingItem = {
@@ -115,6 +115,20 @@ export function useShoppingList() {
       return {
         ...prev,
         items: prev.items.filter(item => item.id !== itemId),
+      };
+    });
+  }, []);
+
+  const moveItemToCategory = useCallback((itemId: string, newCategory: CategoryType) => {
+    setList(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item =>
+          item.id === itemId
+            ? { ...item, category: newCategory }
+            : item
+        ),
       };
     });
   }, []);
@@ -158,6 +172,7 @@ export function useShoppingList() {
     clearChecked,
     addItem,
     removeItem,
+    moveItemToCategory,
     importList,
     resetList,
     checkedCount,
