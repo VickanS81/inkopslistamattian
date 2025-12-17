@@ -9,7 +9,6 @@ import {
   useSensor,
   useSensors,
   closestCenter,
-  DragOverlay,
 } from '@dnd-kit/core';
 import { CategoryType } from '@/types/shopping';
 
@@ -42,17 +41,17 @@ export function DragProvider({
   const [activeType, setActiveType] = useState<'item' | 'category' | null>(null);
   const [overCategoryId, setOverCategoryId] = useState<CategoryType | null>(null);
 
-  // Configure sensors for both mouse and touch
+  // Configure sensors to only activate on drag handles
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: {
-      distance: 8, // 8px movement required before drag starts
+      distance: 10, // 10px movement required before drag starts
     },
   });
   
   const touchSensor = useSensor(TouchSensor, {
     activationConstraint: {
-      delay: 200, // 200ms hold before drag starts
-      tolerance: 5, // 5px movement tolerance during delay
+      delay: 250, // 250ms hold before drag starts
+      tolerance: 8, // 8px movement tolerance during delay
     },
   });
 

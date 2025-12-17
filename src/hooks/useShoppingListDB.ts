@@ -261,6 +261,10 @@ export function useShoppingListDB() {
   const clearChecked = useCallback(async () => {
     if (!currentList) return;
 
+    // Optimistic update - immediately remove checked items from local state
+    const checkedItems = items.filter((i) => i.checked);
+    setItems((prev) => prev.filter((i) => !i.checked));
+
     const { error } = await supabase
       .from('shopping_items')
       .delete()
@@ -269,9 +273,11 @@ export function useShoppingListDB() {
 
     if (error) {
       console.error('Error clearing items:', error);
+      // Restore items on error
+      setItems((prev) => [...prev, ...checkedItems]);
       toast({ title: 'Kunde inte rensa varor', variant: 'destructive' });
     }
-  }, [currentList, toast]);
+  }, [currentList, items, toast]);
 
   const moveCategoryById = useCallback(
     async (categoryId: CategoryType, toIndex: number) => {
