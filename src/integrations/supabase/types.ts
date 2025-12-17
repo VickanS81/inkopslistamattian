@@ -184,6 +184,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_list_invite_info: {
+        Args: { share_code_param: string }
+        Returns: {
+          list_id: string
+          list_name: string
+          owner_id: string
+          owner_name: string
+        }[]
+      }
       is_list_member: { Args: { list_uuid: string }; Returns: boolean }
     }
     Enums: {
