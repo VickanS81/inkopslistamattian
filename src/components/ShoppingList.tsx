@@ -64,9 +64,7 @@ export function ShoppingList() {
     >
       <div className="min-h-screen bg-background flex flex-col">
         <Header
-          progress={progress}
           checkedCount={checkedCount}
-          totalCount={totalCount}
           onClearChecked={clearChecked}
           onReset={resetList}
           hasCheckedItems={checkedCount > 0}
