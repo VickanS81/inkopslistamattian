@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { CategoryType, CategoryInfo } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
@@ -114,9 +114,17 @@ export function ShoppingListDB() {
   const { signOut } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
+  
+  // Use ref to always have the latest autoCategorize value in callbacks
+  const autoCategorizeRef = useRef(settings.autoCategorize);
+  useEffect(() => {
+    autoCategorizeRef.current = settings.autoCategorize;
+    console.log('autoCategorizeRef updated to:', settings.autoCategorize);
+  }, [settings.autoCategorize]);
 
   const analyzeWithAI = useCallback(async (itemId: string, word: string) => {
-    console.log('analyzeWithAI called:', { itemId, word, autoCategorize: settings.autoCategorize });
+    const shouldAutoCategorize = autoCategorizeRef.current;
+    console.log('analyzeWithAI called:', { itemId, word, autoCategorize: shouldAutoCategorize });
     try {
       const { data, error } = await supabase.functions.invoke('spell-check', {
         body: { word }
@@ -130,12 +138,13 @@ export function ShoppingListDB() {
       }
 
       // If auto-categorize is on, move to AI-determined category
-      const shouldMove = settings.autoCategorize && data?.category && data.category !== 'other';
-      console.log('Should move item?', { shouldMove, category: data?.category, autoCategorize: settings.autoCategorize });
+      const shouldMove = shouldAutoCategorize && data?.category && data.category !== 'other';
+      console.log('Should move item?', { shouldMove, category: data?.category, autoCategorize: shouldAutoCategorize });
       
       if (shouldMove) {
         console.log('Moving item to category:', data.category);
         await moveItemToCategory(itemId, data.category as CategoryType);
+        console.log('Item moved successfully');
       }
 
       // Show spell suggestion if misspelled
@@ -151,7 +160,7 @@ export function ShoppingListDB() {
     } catch (err) {
       console.error('AI analysis failed:', err);
     }
-  }, [moveItemToCategory, settings.autoCategorize]);
+  }, [moveItemToCategory]);
 
   const handleAddItem = async (name: string) => {
     // Always add to 'other' first, then let AI categorize
