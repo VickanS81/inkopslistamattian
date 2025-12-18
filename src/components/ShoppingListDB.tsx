@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { CategoryType, CategoryInfo } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
@@ -111,20 +111,28 @@ export function ShoppingListDB() {
     restoreDefaultCategories,
   } = useShoppingListDB();
 
-  const { signOut } = useAuth();
-  const { settings, updateSettings } = useSettings();
+  const { signOut, user } = useAuth();
+  const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
-  
-  // Use ref to always have the latest autoCategorize value in callbacks
-  const autoCategorizeRef = useRef(settings.autoCategorize);
-  useEffect(() => {
-    autoCategorizeRef.current = settings.autoCategorize;
-    console.log('autoCategorizeRef updated to:', settings.autoCategorize);
-  }, [settings.autoCategorize]);
 
   const analyzeWithAI = useCallback(async (itemId: string, word: string) => {
-    const shouldAutoCategorize = autoCategorizeRef.current;
+    // Fetch the latest autoCategorize setting directly from database to avoid stale closure
+    let shouldAutoCategorize = settings.autoCategorize;
+    
+    if (user) {
+      const { data: freshSettings } = await supabase
+        .from('user_settings')
+        .select('auto_categorize')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (freshSettings) {
+        shouldAutoCategorize = freshSettings.auto_categorize;
+      }
+    }
+    
     console.log('analyzeWithAI called:', { itemId, word, autoCategorize: shouldAutoCategorize });
+    
     try {
       const { data, error } = await supabase.functions.invoke('spell-check', {
         body: { word }
@@ -160,7 +168,7 @@ export function ShoppingListDB() {
     } catch (err) {
       console.error('AI analysis failed:', err);
     }
-  }, [moveItemToCategory]);
+  }, [moveItemToCategory, settings.autoCategorize, user]);
 
   const handleAddItem = async (name: string) => {
     // Always add to 'other' first, then let AI categorize
