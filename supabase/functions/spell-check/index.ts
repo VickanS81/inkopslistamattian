@@ -12,6 +12,8 @@ serve(async (req) => {
 
   try {
     const { word } = await req.json();
+    console.log("Spell-check called with word:", word);
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -114,10 +116,13 @@ Fokusera bara på uppenbara stavfel.`
     }
 
     const data = await response.json();
+    console.log("AI response:", JSON.stringify(data));
+    
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     
     if (toolCall?.function?.arguments) {
       const result = JSON.parse(toolCall.function.arguments);
+      console.log("Parsed result:", JSON.stringify(result));
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
