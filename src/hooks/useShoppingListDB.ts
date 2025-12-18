@@ -417,19 +417,20 @@ export function useShoppingListDB() {
 
   const moveItemToCategory = useCallback(
     async (itemId: string, newCategory: CategoryType) => {
-      // Find the item first
+      // Find the item in local state
       const item = items.find((i) => i.id === itemId);
-      if (!item) return;
+      const oldCategory = item?.category || 'other';
       
-      const oldCategory = item.category;
-      
-      // Optimistic update - immediately update local state
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === itemId ? { ...i, category: newCategory } : i
-        )
-      );
+      // Optimistic update - immediately update local state if item exists
+      if (item) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === itemId ? { ...i, category: newCategory } : i
+          )
+        );
+      }
 
+      // Always update in database, even if item isn't in local state yet
       const { error } = await supabase
         .from('shopping_items')
         .update({ category: newCategory })
@@ -437,12 +438,14 @@ export function useShoppingListDB() {
 
       if (error) {
         console.error('Error moving item:', error);
-        // Revert on error
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === itemId ? { ...i, category: oldCategory } : i
-          )
-        );
+        // Revert on error if we did optimistic update
+        if (item) {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === itemId ? { ...i, category: oldCategory } : i
+            )
+          );
+        }
       }
     },
     [items]
