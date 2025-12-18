@@ -116,10 +116,13 @@ export function ShoppingListDB() {
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
 
   const analyzeWithAI = useCallback(async (itemId: string, word: string) => {
+    console.log('analyzeWithAI called:', { itemId, word, autoCategorize: settings.autoCategorize });
     try {
       const { data, error } = await supabase.functions.invoke('spell-check', {
         body: { word }
       });
+
+      console.log('spell-check response:', { data, error });
 
       if (error) {
         console.error('AI analysis error:', error);
@@ -127,7 +130,11 @@ export function ShoppingListDB() {
       }
 
       // If auto-categorize is on, move to AI-determined category
-      if (settings.autoCategorize && data?.category && data.category !== 'other') {
+      const shouldMove = settings.autoCategorize && data?.category && data.category !== 'other';
+      console.log('Should move item?', { shouldMove, category: data?.category, autoCategorize: settings.autoCategorize });
+      
+      if (shouldMove) {
+        console.log('Moving item to category:', data.category);
         await moveItemToCategory(itemId, data.category as CategoryType);
       }
 
