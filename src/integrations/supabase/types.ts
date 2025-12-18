@@ -261,6 +261,7 @@ export type Database = {
     }
     Functions: {
       check_email_exists: { Args: { email_param: string }; Returns: boolean }
+      get_current_user_email: { Args: never; Returns: string }
       get_list_invite_info: {
         Args: { share_code_param: string }
         Returns: {
