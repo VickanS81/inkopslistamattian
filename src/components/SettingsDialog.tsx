@@ -20,16 +20,24 @@ interface SettingsDialogProps {
   settings: AppSettings;
   onUpdateSettings: (updates: Partial<AppSettings>) => void;
   customCategories?: CategoryInfo[];
+  visibleDefaultCategories?: CategoryInfo[];
+  hiddenDefaultCategories?: string[];
   onAddCategory?: (name: string, icon: string) => Promise<void>;
   onDeleteCategory?: (categoryId: string) => Promise<void>;
+  onHideDefaultCategory?: (categoryId: string) => Promise<void>;
+  onRestoreDefaultCategories?: () => Promise<void>;
 }
 
 export function SettingsDialog({ 
   settings, 
   onUpdateSettings,
   customCategories = [],
+  visibleDefaultCategories = [],
+  hiddenDefaultCategories = [],
   onAddCategory,
   onDeleteCategory,
+  onHideDefaultCategory,
+  onRestoreDefaultCategories,
 }: SettingsDialogProps) {
   return (
     <Dialog>
@@ -109,8 +117,12 @@ export function SettingsDialog({
                     name: c.name,
                     icon: c.icon,
                   }))}
+                  visibleDefaultCategories={visibleDefaultCategories}
+                  hiddenDefaultCategories={hiddenDefaultCategories}
                   onAddCategory={onAddCategory}
                   onDeleteCategory={onDeleteCategory}
+                  onHideDefaultCategory={onHideDefaultCategory}
+                  onRestoreDefaultCategories={onRestoreDefaultCategories}
                 />
               </>
             )}
