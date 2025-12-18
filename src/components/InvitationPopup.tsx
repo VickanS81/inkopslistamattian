@@ -79,17 +79,30 @@ export function InvitationPopup({ onAccepted }: InvitationPopupProps) {
     setIsLoading(true);
 
     try {
-      // Add user to list members
-      const { error: memberError } = await supabase
+      // Check if already a member first
+      const { data: existingMember } = await supabase
         .from('list_members')
-        .insert({
-          list_id: currentInvitation.list_id,
-          user_id: user.id,
-        });
+        .select('id')
+        .eq('list_id', currentInvitation.list_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (memberError) throw memberError;
+      // Only insert if not already a member
+      if (!existingMember) {
+        const { error: memberError } = await supabase
+          .from('list_members')
+          .insert({
+            list_id: currentInvitation.list_id,
+            user_id: user.id,
+          });
 
-      // Update invitation status
+        // Ignore duplicate key errors (23505) - user is already a member
+        if (memberError && memberError.code !== '23505') {
+          throw memberError;
+        }
+      }
+
+      // Always update invitation status
       const { error: updateError } = await supabase
         .from('list_invitations')
         .update({ status: 'accepted' })
