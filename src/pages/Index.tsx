@@ -1,28 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingListDB } from '@/components/ShoppingListDB';
+import { InvitationPopup } from '@/components/InvitationPopup';
 
 export default function Index() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
     }
   }, [user, isLoading, navigate]);
-
-  useEffect(() => {
-    // Check for pending share code after login
-    if (user) {
-      const pendingCode = localStorage.getItem('pending_share_code');
-      if (pendingCode) {
-        localStorage.removeItem('pending_share_code');
-        navigate(`/join/${pendingCode}`);
-      }
-    }
-  }, [user, navigate]);
 
   if (isLoading) {
     return (
@@ -36,5 +27,10 @@ export default function Index() {
     return null;
   }
 
-  return <ShoppingListDB />;
+  return (
+    <>
+      <ShoppingListDB key={refreshKey} />
+      <InvitationPopup onAccepted={() => setRefreshKey(k => k + 1)} />
+    </>
+  );
 }

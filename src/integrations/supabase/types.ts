@@ -87,6 +87,41 @@ export type Database = {
           },
         ]
       }
+      list_invitations: {
+        Row: {
+          created_at: string
+          id: string
+          invitee_email: string
+          inviter_id: string
+          list_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitee_email: string
+          inviter_id: string
+          list_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitee_email?: string
+          inviter_id?: string
+          list_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_invitations_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       list_members: {
         Row: {
           id: string
@@ -225,6 +260,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_email_exists: { Args: { email_param: string }; Returns: boolean }
       get_list_invite_info: {
         Args: { share_code_param: string }
         Returns: {
@@ -232,6 +268,16 @@ export type Database = {
           list_name: string
           owner_id: string
           owner_name: string
+        }[]
+      }
+      get_pending_invitations: {
+        Args: never
+        Returns: {
+          created_at: string
+          invitation_id: string
+          inviter_name: string
+          list_id: string
+          list_name: string
         }[]
       }
       is_list_member: { Args: { list_uuid: string }; Returns: boolean }

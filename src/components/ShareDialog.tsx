@@ -2,50 +2,115 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Share2, Copy, Check, Users } from 'lucide-react';
+import { Share2, Users, Send, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ShareDialogProps {
-  shareCode: string;
+  listId: string;
+  listName: string;
   members: { id: string; display_name: string | null }[];
 }
 
-export function ShareDialog({ shareCode, members }: ShareDialogProps) {
-  const [copied, setCopied] = useState(false);
+export function ShareDialog({ listId, listName, members }: ShareDialogProps) {
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const shareUrl = `${window.location.origin}/join/${shareCode}`;
+  const handleInvite = async () => {
+    if (!email.trim() || !user) return;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      toast({ title: 'Länk kopierad!' });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast({ title: 'Kunde inte kopiera', variant: 'destructive' });
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast({ title: 'Ogiltig e-postadress', variant: 'destructive' });
+      return;
     }
-  };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Gå med i min inköpslista',
-          text: 'Klicka på länken för att gå med i min delade inköpslista på Handla.',
-          url: shareUrl,
+    setIsLoading(true);
+
+    try {
+      // Check if email exists in system
+      const { data: emailExists, error: checkError } = await supabase
+        .rpc('check_email_exists', { email_param: trimmedEmail });
+
+      if (checkError) throw checkError;
+
+      if (!emailExists) {
+        toast({
+          title: 'Användare finns inte',
+          description: 'Denna e-postadress har inget konto. Kontakta personen för att skapa ett konto.',
+          variant: 'destructive',
         });
-      } catch (err) {
-        // User cancelled or share failed
-        console.log('Share cancelled or failed:', err);
+        setIsLoading(false);
+        return;
       }
-    } else {
-      handleCopy();
+
+      // Check if user is trying to invite themselves
+      if (user.email?.toLowerCase() === trimmedEmail) {
+        toast({ title: 'Du kan inte bjuda in dig själv', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if already a member
+      const existingMember = members.find(m => {
+        // This is a simplified check - ideally we'd check by email
+        return false; // We'll rely on the invitation check below
+      });
+
+      // Check if there's already a pending invitation
+      const { data: existingInvitation } = await supabase
+        .from('list_invitations')
+        .select('id, status')
+        .eq('list_id', listId)
+        .eq('invitee_email', trimmedEmail)
+        .maybeSingle();
+
+      if (existingInvitation) {
+        if (existingInvitation.status === 'pending') {
+          toast({ title: 'En inbjudan har redan skickats till denna person', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        if (existingInvitation.status === 'accepted') {
+          toast({ title: 'Denna person är redan medlem i listan', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        // If declined, delete and create new
+        await supabase.from('list_invitations').delete().eq('id', existingInvitation.id);
+      }
+
+      // Create invitation
+      const { error: inviteError } = await supabase
+        .from('list_invitations')
+        .insert({
+          list_id: listId,
+          inviter_id: user.id,
+          invitee_email: trimmedEmail,
+        });
+
+      if (inviteError) throw inviteError;
+
+      toast({ title: 'Inbjudan skickad!' });
+      setEmail('');
+      setOpen(false);
+
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      toast({ title: 'Kunde inte skicka inbjudan', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="h-10 w-10">
           <Share2 className="w-5 h-5" />
@@ -55,40 +120,37 @@ export function ShareDialog({ shareCode, members }: ShareDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="w-5 h-5" />
-            Dela listan
+            Dela "{listName}"
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 py-4">
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Dela denna länk för att bjuda in andra till listan:
+              Ange e-postadressen till personen du vill dela listan med:
             </p>
             <div className="flex gap-2">
               <Input
-                value={shareUrl}
-                readOnly
-                className="font-mono text-sm"
+                type="email"
+                placeholder="namn@exempel.se"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                disabled={isLoading}
               />
               <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopy}
+                onClick={handleInvite}
+                disabled={isLoading || !email.trim()}
                 className="shrink-0"
               >
-                {copied ? (
-                  <Check className="w-4 h-4 text-primary" />
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Copy className="w-4 h-4" />
+                  <Send className="w-4 h-4" />
                 )}
               </Button>
             </div>
           </div>
-
-          <Button onClick={handleShare} className="w-full">
-            <Share2 className="w-4 h-4 mr-2" />
-            Dela länk
-          </Button>
 
           {members.length > 0 && (
             <div className="space-y-3">
