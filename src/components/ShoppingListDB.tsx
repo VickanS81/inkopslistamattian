@@ -147,13 +147,11 @@ export function ShoppingListDB() {
   }, [moveItemToCategory]);
 
   const handleAddItem = async (name: string) => {
-    console.log('Adding item:', name, 'autoCategorize:', settings.autoCategorize);
     // Always add to 'other' first, then let AI categorize
     const itemId = await addItem(name, 'other', '1', 'st');
     
     if (itemId) {
       // AI handles both categorization and spell checking
-      console.log('Item added, calling AI analysis with autoCategorize:', settings.autoCategorize);
       analyzeWithAI(itemId, name, settings.autoCategorize);
     }
   };

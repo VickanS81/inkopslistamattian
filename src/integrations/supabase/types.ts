@@ -255,6 +255,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          auto_categorize: boolean
+          auto_clear_checked: boolean
+          created_at: string
+          id: string
+          show_only_categories_with_items: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_categorize?: boolean
+          auto_clear_checked?: boolean
+          created_at?: string
+          id?: string
+          show_only_categories_with_items?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_categorize?: boolean
+          auto_clear_checked?: boolean
+          created_at?: string
+          id?: string
+          show_only_categories_with_items?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
