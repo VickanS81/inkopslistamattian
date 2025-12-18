@@ -217,7 +217,7 @@ export function ShoppingListDB() {
               onRenameList={renameList}
             />
             {currentList && (
-              <ShareDialog shareCode={currentList.share_code} members={members} />
+              <ShareDialog listId={currentList.id} listName={currentList.name} members={members} />
             )}
             <SettingsDialog 
               settings={settings} 
