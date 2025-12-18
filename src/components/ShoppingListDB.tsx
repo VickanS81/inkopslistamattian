@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { CategoryType } from '@/types/shopping';
+import { CategoryType, CategoryInfo } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
 import { EmptyState } from './EmptyState';
@@ -21,6 +21,7 @@ interface CategoryListProps {
   categoryOrder: CategoryType[];
   groupedItems: Record<CategoryType, any[]>;
   settings: AppSettings;
+  customCategories: CategoryInfo[];
   onToggleItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategory: CategoryType) => void;
   onMoveCategory: (categoryId: CategoryType, toIndex: number) => void;
@@ -32,7 +33,8 @@ interface CategoryListProps {
 function CategoryList({ 
   categoryOrder, 
   groupedItems, 
-  settings, 
+  settings,
+  customCategories,
   onToggleItem, 
   onMoveItem, 
   onMoveCategory,
@@ -66,6 +68,7 @@ function CategoryList({
           category={categoryId as CategoryType}
           items={groupedItems[categoryId as CategoryType] || []}
           index={index}
+          customCategories={customCategories}
           onToggleItem={onToggleItem}
           onMoveItem={onMoveItem}
           onMoveCategory={onMoveCategory}
@@ -84,6 +87,7 @@ export function ShoppingListDB() {
     currentList,
     groupedItems,
     categoryOrder,
+    customCategories,
     isLoading,
     addItem,
     toggleItem,
@@ -99,6 +103,8 @@ export function ShoppingListDB() {
     deleteList,
     renameList,
     updateItemName,
+    addCustomCategory,
+    deleteCustomCategory,
   } = useShoppingListDB();
 
   const { signOut } = useAuth();
@@ -209,7 +215,13 @@ export function ShoppingListDB() {
             {currentList && (
               <ShareDialog shareCode={currentList.share_code} members={members} />
             )}
-            <SettingsDialog settings={settings} onUpdateSettings={updateSettings} />
+            <SettingsDialog 
+              settings={settings} 
+              onUpdateSettings={updateSettings}
+              customCategories={customCategories}
+              onAddCategory={addCustomCategory}
+              onDeleteCategory={deleteCustomCategory}
+            />
           </div>
           <Button
             variant="ghost"
@@ -239,6 +251,7 @@ export function ShoppingListDB() {
               categoryOrder={categoryOrder}
               groupedItems={groupedItems}
               settings={settings}
+              customCategories={customCategories}
               onToggleItem={handleToggleItem}
               onMoveItem={moveItemToCategory}
               onMoveCategory={handleMoveCategory}

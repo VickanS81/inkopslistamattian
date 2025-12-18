@@ -46,6 +46,44 @@ export type Database = {
           },
         ]
       }
+      custom_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string
+          icon: string
+          id: string
+          list_id: string
+          name: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by: string
+          icon: string
+          id?: string
+          list_id: string
+          name: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          icon?: string
+          id?: string
+          list_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_categories_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       list_members: {
         Row: {
           id: string

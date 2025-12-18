@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { CategoryType, CATEGORIES } from '@/types/shopping';
+import { CategoryType, CATEGORIES, CategoryInfo, DEFAULT_CATEGORY_IDS } from '@/types/shopping';
 import { useToast } from '@/hooks/use-toast';
 
 export interface DBShoppingItem {
@@ -27,6 +27,16 @@ export interface DBShoppingList {
   updated_at: string;
 }
 
+export interface DBCustomCategory {
+  id: string;
+  list_id: string;
+  category_id: string;
+  name: string;
+  icon: string;
+  created_at: string;
+  created_by: string;
+}
+
 const SELECTED_LIST_KEY = 'shopping-selected-list';
 
 export function useShoppingListDB() {
@@ -35,6 +45,7 @@ export function useShoppingListDB() {
   const [allLists, setAllLists] = useState<DBShoppingList[]>([]);
   const [currentList, setCurrentList] = useState<DBShoppingList | null>(null);
   const [items, setItems] = useState<DBShoppingItem[]>([]);
+  const [customCategories, setCustomCategories] = useState<DBCustomCategory[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<CategoryType[]>(
     CATEGORIES.map(c => c.id)
   );
@@ -133,6 +144,18 @@ export function useShoppingListDB() {
       setItems(itemsData || []);
     }
 
+    // Fetch custom categories for this list
+    const { data: customCatData, error: customCatError } = await supabase
+      .from('custom_categories')
+      .select('*')
+      .eq('list_id', list.id);
+
+    if (customCatError) {
+      console.error('Error fetching custom categories:', customCatError);
+    } else {
+      setCustomCategories(customCatData || []);
+    }
+
     // Fetch category order for this list
     const { data: orderData } = await supabase
       .from('category_order')
@@ -144,7 +167,10 @@ export function useShoppingListDB() {
     if (orderData?.category_order) {
       setCategoryOrder(orderData.category_order as CategoryType[]);
     } else {
-      setCategoryOrder(CATEGORIES.map(c => c.id));
+      // Include custom categories in default order
+      const defaultOrder = CATEGORIES.map(c => c.id);
+      const customIds = (customCatData || []).map(c => c.category_id);
+      setCategoryOrder([...defaultOrder, ...customIds]);
     }
 
     // Fetch members
@@ -519,6 +545,123 @@ export function useShoppingListDB() {
     []
   );
 
+  // Custom category management
+  const addCustomCategory = useCallback(
+    async (name: string, icon: string) => {
+      if (!currentList || !user) return;
+
+      // Generate a unique category_id from the name
+      const categoryId = `custom_${name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+
+      const { data, error } = await supabase
+        .from('custom_categories')
+        .insert({
+          list_id: currentList.id,
+          category_id: categoryId,
+          name,
+          icon,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding custom category:', error);
+        toast({ title: 'Kunde inte lägga till kategori', variant: 'destructive' });
+        return;
+      }
+
+      // Add to local state
+      setCustomCategories((prev) => [...prev, data]);
+
+      // Add to category order
+      const newOrder = [...categoryOrder, categoryId];
+      setCategoryOrder(newOrder);
+
+      // Save new order to database
+      await supabase.from('category_order').upsert(
+        {
+          list_id: currentList.id,
+          user_id: user.id,
+          category_order: newOrder,
+        },
+        { onConflict: 'list_id,user_id' }
+      );
+
+      toast({ title: `Kategori "${name}" tillagd` });
+    },
+    [currentList, user, categoryOrder, toast]
+  );
+
+  const deleteCustomCategory = useCallback(
+    async (categoryId: string) => {
+      if (!currentList || !user) return;
+
+      // Move all items in this category to "other"
+      const itemsInCategory = items.filter((i) => i.category === categoryId);
+      if (itemsInCategory.length > 0) {
+        const { error: moveError } = await supabase
+          .from('shopping_items')
+          .update({ category: 'other' })
+          .eq('list_id', currentList.id)
+          .eq('category', categoryId);
+
+        if (moveError) {
+          console.error('Error moving items:', moveError);
+        }
+
+        // Update local state
+        setItems((prev) =>
+          prev.map((item) =>
+            item.category === categoryId ? { ...item, category: 'other' } : item
+          )
+        );
+      }
+
+      // Delete the category
+      const { error } = await supabase
+        .from('custom_categories')
+        .delete()
+        .eq('list_id', currentList.id)
+        .eq('category_id', categoryId);
+
+      if (error) {
+        console.error('Error deleting custom category:', error);
+        toast({ title: 'Kunde inte ta bort kategori', variant: 'destructive' });
+        return;
+      }
+
+      // Remove from local state
+      setCustomCategories((prev) => prev.filter((c) => c.category_id !== categoryId));
+
+      // Remove from category order
+      const newOrder = categoryOrder.filter((c) => c !== categoryId);
+      setCategoryOrder(newOrder);
+
+      // Save new order to database
+      await supabase.from('category_order').upsert(
+        {
+          list_id: currentList.id,
+          user_id: user.id,
+          category_order: newOrder,
+        },
+        { onConflict: 'list_id,user_id' }
+      );
+
+      const category = customCategories.find((c) => c.category_id === categoryId);
+      toast({ title: `Kategori "${category?.name || categoryId}" borttagen` });
+    },
+    [currentList, user, categoryOrder, items, customCategories, toast]
+  );
+
+  // Convert custom categories to CategoryInfo format
+  const customCategoriesInfo: CategoryInfo[] = customCategories.map((c) => ({
+    id: c.category_id,
+    name: c.name,
+    icon: c.icon,
+    isCustom: true,
+  }));
+
   const checkedCount = items.filter((i) => i.checked).length;
   const totalCount = items.length;
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
@@ -528,6 +671,7 @@ export function useShoppingListDB() {
     currentList,
     groupedItems,
     categoryOrder,
+    customCategories: customCategoriesInfo,
     isLoading,
     addItem,
     toggleItem,
@@ -543,5 +687,7 @@ export function useShoppingListDB() {
     deleteList,
     renameList,
     updateItemName,
+    addCustomCategory,
+    deleteCustomCategory,
   };
 }
