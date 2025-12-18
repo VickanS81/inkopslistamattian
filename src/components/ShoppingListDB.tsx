@@ -115,7 +115,7 @@ export function ShoppingListDB() {
   const { settings, updateSettings } = useSettings();
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
 
-  const analyzeWithAI = useCallback(async (itemId: string, word: string, shouldCategorize: boolean) => {
+  const analyzeWithAI = useCallback(async (itemId: string, word: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('spell-check', {
         body: { word }
@@ -127,7 +127,7 @@ export function ShoppingListDB() {
       }
 
       // If auto-categorize is on, move to AI-determined category
-      if (shouldCategorize && data?.category && data.category !== 'other') {
+      if (settings.autoCategorize && data?.category && data.category !== 'other') {
         await moveItemToCategory(itemId, data.category as CategoryType);
       }
 
@@ -144,7 +144,7 @@ export function ShoppingListDB() {
     } catch (err) {
       console.error('AI analysis failed:', err);
     }
-  }, [moveItemToCategory]);
+  }, [moveItemToCategory, settings.autoCategorize]);
 
   const handleAddItem = async (name: string) => {
     // Always add to 'other' first, then let AI categorize
@@ -152,7 +152,7 @@ export function ShoppingListDB() {
     
     if (itemId) {
       // AI handles both categorization and spell checking
-      analyzeWithAI(itemId, name, settings.autoCategorize);
+      analyzeWithAI(itemId, name);
     }
   };
 
