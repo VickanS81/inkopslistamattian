@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, GripVertical } from 'lucide-react';
-import { ShoppingItem as ShoppingItemType, CategoryType, getCategoryInfo } from '@/types/shopping';
+import { ShoppingItem as ShoppingItemType, CategoryType, getCategoryInfo, CategoryInfo } from '@/types/shopping';
 import { ShoppingItem, SpellSuggestion } from './ShoppingItem';
 import { useDragState } from '@/contexts/DragContext';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
@@ -11,6 +11,7 @@ interface CategoryGroupProps {
   category: CategoryType;
   items: ShoppingItemType[];
   index: number;
+  customCategories?: CategoryInfo[];
   onToggleItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategory: CategoryType) => void;
   onMoveCategory: (categoryId: CategoryType, toIndex: number) => void;
@@ -23,6 +24,7 @@ export function CategoryGroup({
   category, 
   items, 
   index, 
+  customCategories = [],
   onToggleItem, 
   onMoveItem, 
   onMoveCategory,
@@ -31,7 +33,7 @@ export function CategoryGroup({
   onRejectSuggestion
 }: CategoryGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const categoryInfo = getCategoryInfo(category);
+  const categoryInfo = getCategoryInfo(category, customCategories);
   const { activeId, activeType, overCategoryId } = useDragState();
   
   const uncheckedCount = items.filter(i => !i.checked).length;

@@ -1,4 +1,5 @@
-export type CategoryType = 
+// Default category types (built-in)
+export type DefaultCategoryType = 
   | 'vegetables'
   | 'dairy'
   | 'meat'
@@ -9,6 +10,9 @@ export type CategoryType =
   | 'bakery'
   | 'drinks'
   | 'other';
+
+// CategoryType now supports custom categories as strings
+export type CategoryType = DefaultCategoryType | string;
 
 export interface ShoppingItem {
   id: string;
@@ -31,6 +35,7 @@ export interface CategoryInfo {
   id: CategoryType;
   name: string;
   icon: string;
+  isCustom?: boolean;
 }
 
 // Order matters - "other" first so new items appear at top
@@ -47,6 +52,13 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'drinks', name: 'Drycker', icon: '🥤' },
 ];
 
-export const getCategoryInfo = (categoryId: CategoryType): CategoryInfo => {
+export const DEFAULT_CATEGORY_IDS = CATEGORIES.map(c => c.id);
+
+export const getCategoryInfo = (categoryId: CategoryType, customCategories: CategoryInfo[] = []): CategoryInfo => {
+  // First check custom categories
+  const customCat = customCategories.find(c => c.id === categoryId);
+  if (customCat) return customCat;
+  
+  // Then check default categories
   return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[0];
 };
