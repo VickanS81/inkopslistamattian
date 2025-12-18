@@ -17,6 +17,7 @@ export type Database = {
       category_order: {
         Row: {
           category_order: string[]
+          hidden_default_categories: string[]
           id: string
           list_id: string
           updated_at: string
@@ -24,6 +25,7 @@ export type Database = {
         }
         Insert: {
           category_order?: string[]
+          hidden_default_categories?: string[]
           id?: string
           list_id: string
           updated_at?: string
@@ -31,6 +33,7 @@ export type Database = {
         }
         Update: {
           category_order?: string[]
+          hidden_default_categories?: string[]
           id?: string
           list_id?: string
           updated_at?: string

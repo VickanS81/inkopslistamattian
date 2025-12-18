@@ -88,6 +88,8 @@ export function ShoppingListDB() {
     groupedItems,
     categoryOrder,
     customCategories,
+    hiddenDefaultCategories,
+    visibleDefaultCategories,
     isLoading,
     addItem,
     toggleItem,
@@ -105,6 +107,8 @@ export function ShoppingListDB() {
     updateItemName,
     addCustomCategory,
     deleteCustomCategory,
+    hideDefaultCategory,
+    restoreDefaultCategories,
   } = useShoppingListDB();
 
   const { signOut } = useAuth();
@@ -219,8 +223,12 @@ export function ShoppingListDB() {
               settings={settings} 
               onUpdateSettings={updateSettings}
               customCategories={customCategories}
+              visibleDefaultCategories={visibleDefaultCategories}
+              hiddenDefaultCategories={hiddenDefaultCategories}
               onAddCategory={addCustomCategory}
               onDeleteCategory={deleteCustomCategory}
+              onHideDefaultCategory={hideDefaultCategory}
+              onRestoreDefaultCategories={restoreDefaultCategories}
             />
           </div>
           <Button

@@ -49,9 +49,9 @@ export function useShoppingListDB() {
   const [categoryOrder, setCategoryOrder] = useState<CategoryType[]>(
     CATEGORIES.map(c => c.id)
   );
+  const [hiddenDefaultCategories, setHiddenDefaultCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [members, setMembers] = useState<{ id: string; display_name: string | null }[]>([]);
-
   // Fetch all lists and select one
   useEffect(() => {
     if (!user) {
@@ -156,10 +156,10 @@ export function useShoppingListDB() {
       setCustomCategories(customCatData || []);
     }
 
-    // Fetch category order for this list
+    // Fetch category order and hidden categories for this list
     const { data: orderData } = await supabase
       .from('category_order')
-      .select('category_order')
+      .select('category_order, hidden_default_categories')
       .eq('list_id', list.id)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -172,6 +172,9 @@ export function useShoppingListDB() {
       const customIds = (customCatData || []).map(c => c.category_id);
       setCategoryOrder([...defaultOrder, ...customIds]);
     }
+
+    // Set hidden default categories
+    setHiddenDefaultCategories((orderData?.hidden_default_categories as string[]) || []);
 
     // Fetch members
     await fetchMembers(list.id);
@@ -654,6 +657,100 @@ export function useShoppingListDB() {
     [currentList, user, categoryOrder, items, customCategories, toast]
   );
 
+  // Hide a default category
+  const hideDefaultCategory = useCallback(
+    async (categoryId: string) => {
+      if (!currentList || !user) return;
+
+      // Can't hide 'other' category - it's the fallback
+      if (categoryId === 'other') {
+        toast({ title: 'Kan inte dölja kategorin "Övrigt"', variant: 'destructive' });
+        return;
+      }
+
+      // Move all items in this category to "other"
+      const itemsInCategory = items.filter((i) => i.category === categoryId);
+      if (itemsInCategory.length > 0) {
+        const { error: moveError } = await supabase
+          .from('shopping_items')
+          .update({ category: 'other' })
+          .eq('list_id', currentList.id)
+          .eq('category', categoryId);
+
+        if (moveError) {
+          console.error('Error moving items:', moveError);
+        }
+
+        setItems((prev) =>
+          prev.map((item) =>
+            item.category === categoryId ? { ...item, category: 'other' } : item
+          )
+        );
+      }
+
+      // Add to hidden categories
+      const newHidden = [...hiddenDefaultCategories, categoryId];
+      setHiddenDefaultCategories(newHidden);
+
+      // Remove from category order
+      const newOrder = categoryOrder.filter((c) => c !== categoryId);
+      setCategoryOrder(newOrder);
+
+      // Save to database
+      await supabase.from('category_order').upsert(
+        {
+          list_id: currentList.id,
+          user_id: user.id,
+          category_order: newOrder,
+          hidden_default_categories: newHidden,
+        },
+        { onConflict: 'list_id,user_id' }
+      );
+
+      const category = CATEGORIES.find((c) => c.id === categoryId);
+      toast({ title: `Kategori "${category?.name || categoryId}" dold` });
+    },
+    [currentList, user, categoryOrder, items, hiddenDefaultCategories, toast]
+  );
+
+  // Restore all default categories
+  const restoreDefaultCategories = useCallback(
+    async () => {
+      if (!currentList || !user) return;
+
+      // Get all default category IDs that are currently hidden
+      const restoredIds = hiddenDefaultCategories.filter((id) => 
+        DEFAULT_CATEGORY_IDS.includes(id as any)
+      );
+
+      if (restoredIds.length === 0) {
+        toast({ title: 'Inga dolda kategorier att återställa' });
+        return;
+      }
+
+      // Clear hidden categories
+      setHiddenDefaultCategories([]);
+
+      // Add back to category order (at end)
+      const newOrder = [...categoryOrder, ...restoredIds];
+      setCategoryOrder(newOrder);
+
+      // Save to database
+      await supabase.from('category_order').upsert(
+        {
+          list_id: currentList.id,
+          user_id: user.id,
+          category_order: newOrder,
+          hidden_default_categories: [],
+        },
+        { onConflict: 'list_id,user_id' }
+      );
+
+      toast({ title: 'Standardkategorier återställda' });
+    },
+    [currentList, user, categoryOrder, hiddenDefaultCategories, toast]
+  );
+
   // Convert custom categories to CategoryInfo format
   const customCategoriesInfo: CategoryInfo[] = customCategories.map((c) => ({
     id: c.category_id,
@@ -661,6 +758,11 @@ export function useShoppingListDB() {
     icon: c.icon,
     isCustom: true,
   }));
+
+  // Get visible default categories (excluding hidden ones)
+  const visibleDefaultCategories = CATEGORIES.filter(
+    (c) => !hiddenDefaultCategories.includes(c.id)
+  );
 
   const checkedCount = items.filter((i) => i.checked).length;
   const totalCount = items.length;
@@ -672,6 +774,8 @@ export function useShoppingListDB() {
     groupedItems,
     categoryOrder,
     customCategories: customCategoriesInfo,
+    hiddenDefaultCategories,
+    visibleDefaultCategories,
     isLoading,
     addItem,
     toggleItem,
@@ -689,5 +793,7 @@ export function useShoppingListDB() {
     updateItemName,
     addCustomCategory,
     deleteCustomCategory,
+    hideDefaultCategory,
+    restoreDefaultCategories,
   };
 }

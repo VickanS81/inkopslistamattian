@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, RotateCcw } from 'lucide-react';
 import { generateCategoryEmoji, commonCategoryEmojis } from '@/utils/categoryEmoji';
-import { CATEGORIES, CategoryInfo } from '@/types/shopping';
+import { CategoryInfo } from '@/types/shopping';
 import {
   Popover,
   PopoverContent,
@@ -19,14 +19,22 @@ interface CustomCategory {
 
 interface CategoryManagerProps {
   customCategories: CustomCategory[];
+  visibleDefaultCategories?: CategoryInfo[];
+  hiddenDefaultCategories?: string[];
   onAddCategory: (name: string, icon: string) => Promise<void>;
   onDeleteCategory: (categoryId: string) => Promise<void>;
+  onHideDefaultCategory?: (categoryId: string) => Promise<void>;
+  onRestoreDefaultCategories?: () => Promise<void>;
 }
 
 export function CategoryManager({
   customCategories,
+  visibleDefaultCategories = [],
+  hiddenDefaultCategories = [],
   onAddCategory,
   onDeleteCategory,
+  onHideDefaultCategory,
+  onRestoreDefaultCategories,
 }: CategoryManagerProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
@@ -50,27 +58,49 @@ export function CategoryManager({
 
   const previewEmoji = selectedEmoji || (newCategoryName ? generateCategoryEmoji(newCategoryName) : '📦');
 
-  // Get default categories that can't be deleted
-  const defaultCategories = CATEGORIES;
-
   return (
     <div className="space-y-4">
       <div className="text-sm font-medium text-foreground">Kategorier</div>
       
-      {/* Default categories (read-only) */}
+      {/* Default categories (can be hidden) */}
       <div className="space-y-2">
         <div className="text-xs text-muted-foreground">Standardkategorier</div>
-        <div className="flex flex-wrap gap-2">
-          {defaultCategories.map((cat) => (
+        <div className="space-y-2">
+          {visibleDefaultCategories.map((cat) => (
             <div
               key={cat.id}
-              className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-sm"
+              className="flex items-center justify-between gap-2 px-3 py-2 bg-muted rounded-md"
             >
-              <span>{cat.icon}</span>
-              <span>{cat.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{cat.icon}</span>
+                <span className="text-sm">{cat.name}</span>
+              </div>
+              {cat.id !== 'other' && onHideDefaultCategory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => onHideDefaultCategory(cat.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           ))}
         </div>
+        
+        {/* Restore button if there are hidden categories */}
+        {hiddenDefaultCategories.length > 0 && onRestoreDefaultCategories && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+            onClick={onRestoreDefaultCategories}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Återställ standardkategorier ({hiddenDefaultCategories.length} dolda)
+          </Button>
+        )}
       </div>
 
       {/* Custom categories */}
