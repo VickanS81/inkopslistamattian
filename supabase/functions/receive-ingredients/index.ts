@@ -6,6 +6,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Category keywords for auto-categorization (same as frontend)
+type CategoryType = 'vegetables' | 'dairy' | 'meat' | 'fish' | 'pantry' | 'spices' | 'frozen' | 'bakery' | 'drinks' | 'other';
+
+const categoryKeywords: Record<CategoryType, string[]> = {
+  vegetables: [
+    'äpple', 'banan', 'apelsin', 'citron', 'lime', 'druvor', 'päron', 'kiwi', 'mango', 'ananas',
+    'jordgubbar', 'hallon', 'blåbär', 'avokado', 'tomat', 'tomater', 'gurka', 'sallad', 'spenat',
+    'broccoli', 'blomkål', 'morot', 'morötter', 'potatis', 'lök', 'vitlök', 'paprika', 'squash',
+    'zucchini', 'aubergine', 'sparris', 'böngroddar', 'champinjoner', 'svamp', 'rädisa',
+    'selleri', 'purjolök', 'rödkål', 'vitkål', 'grönkål', 'mangold', 'ruccola', 'persilja',
+    'dill', 'basilika', 'koriander', 'mynta', 'frukt', 'grönsaker', 'bär', 'melon', 'vattenmelon',
+    'nektarin', 'persika', 'plommon', 'körsbär', 'granatäpple', 'fikon', 'dadlar', 'ingefära',
+    'rödbetor', 'kålrot', 'palsternacka', 'fänkål', 'kronärtskocka',
+  ],
+  dairy: [
+    'mjölk', 'grädde', 'vispgrädde', 'matlagningsgrädde', 'créme fraiche', 'creme fraiche',
+    'filmjölk', 'yoghurt', 'kvarg', 'ost', 'smör', 'margarin', 'ägg', 'egg', 'cream cheese',
+    'färskost', 'cottage cheese', 'mozzarella', 'parmesan', 'cheddar', 'brie', 'feta',
+    'halloumi', 'ricotta', 'mascarpone', 'gruyère', 'gouda', 'edamer', 'prästost', 'herrgård',
+    'västerbotten', 'adelost', 'getost', 'havredryck', 'sojamjölk', 'mandelmjölk', 'oatly',
+  ],
+  meat: [
+    'kött', 'nötkött', 'fläskkött', 'kycklingfilé', 'kyckling', 'kalkon', 'lamm', 'vilt',
+    'bacon', 'korv', 'falukorv', 'prinskorv', 'chorizo', 'salami', 'skinka', 'köttfärs',
+    'färs', 'blandfärs', 'nötfärs', 'fläskfärs', 'kycklingfärs', 'kotlett', 'schnitzel',
+    'biff', 'entrecote', 'oxfilé', 'fläskfilé', 'kycklingben', 'kycklingklubba', 'vingar',
+    'lever', 'hjärta', 'tunga', 'blodpudding', 'kassler', 'rostbiff', 'pastrami',
+  ],
+  fish: [
+    'fisk', 'lax', 'torsk', 'sej', 'kolja', 'rödspätta', 'flundra', 'makrill', 'sill',
+    'strömming', 'abborre', 'gädda', 'gös', 'öring', 'forell', 'tonfisk', 'sardiner',
+    'ansjovis', 'räkor', 'kräftor', 'hummer', 'krabba', 'musslor', 'bläckfisk', 'calamari',
+    'skaldjur', 'kaviar', 'rom', 'gravad', 'rökt lax', 'fiskpinnar', 'fiskbullar',
+  ],
+  pantry: [
+    'pasta', 'ris', 'nudlar', 'couscous', 'bulgur', 'quinoa', 'linser', 'bönor', 'kikärtor',
+    'mjöl', 'vetemjöl', 'rågsikt', 'grahamsmjöl', 'bakpulver', 'bikarbonat', 'jäst',
+    'socker', 'florsocker', 'strösocker', 'vaniljsocker', 'sirap', 'honung', 'lönnsirap',
+    'olja', 'olivolja', 'rapsolja', 'solrosolja', 'kokosolja', 'vinäger', 'balsamico',
+    'soja', 'sojasås', 'ketchup', 'senap', 'majonnäs', 'sriracha', 'tabasco', 'worcestershire',
+    'tomatpuré', 'krossade tomater', 'passerade tomater', 'kokosmjölk', 'kokosgrädde',
+    'buljong', 'fond', 'nötter', 'mandlar', 'valnötter', 'hasselnötter', 'cashewnötter',
+    'jordnötter', 'frön', 'solrosfrön', 'pumpafrön', 'sesamfrön', 'chiafrön', 'linfrön',
+    'havregryn', 'müsli', 'flingor', 'cornflakes', 'granola', 'russin', 'katrinplommon',
+    'aprikos', 'tranbär', 'kokos', 'choklad', 'kakao', 'kakaopulver', 'nutella',
+    'jordnötssmör', 'sylt', 'marmelad', 'konserver', 'burk', 'konserv',
+  ],
+  spices: [
+    'salt', 'peppar', 'svartpeppar', 'vitpeppar', 'paprikapulver', 'chili', 'cayenne',
+    'curry', 'gurkmeja', 'kumin', 'spiskummin', 'kanel', 'kardemumma', 'ingefära',
+    'muskot', 'kryddnejlika', 'anis', 'stjärnanis', 'vanilj', 'vaniljstång', 'saffran',
+    'timjan', 'oregano', 'basilika', 'rosmarin', 'salvia', 'lagerblad', 'dill', 'persilja',
+    'gräslök', 'dragon', 'koriander', 'mynta', 'citronpeppar', 'vitlökspulver',
+    'lökpulver', 'grillkrydda', 'tacokrydda', 'cajunkrydda', 'kycklingkrydda', 'fiskekrydda',
+    'örtsalt', 'citronpeppar', 'kryddor', 'krydda',
+  ],
+  frozen: [
+    'fryst', 'frysta', 'glass', 'glasspinne', 'piggelin', 'frysta bär', 'frysta grönsaker',
+    'frysta ärtor', 'pommes', 'pommes frites', 'frysta räkor', 'fryspizza', 'fryslåda',
+    'köttbullar', 'fiskpinnar', 'laxfilé', 'kycklingnuggets', 'vårrullar', 'färdig middag',
+  ],
+  bakery: [
+    'bröd', 'limpa', 'franskbröd', 'baguette', 'ciabatta', 'focaccia', 'tunnbröd', 'pitabröd',
+    'tortilla', 'wraps', 'hamburgerbröd', 'korvbröd', 'vetebröd', 'kanelbulle', 'bulle',
+    'croissant', 'danish', 'wienerbröd', 'muffins', 'scones', 'kaka', 'tårta', 'chokladboll',
+    'knäckebröd', 'skorpor', 'kex', 'småkakor', 'pepparkakor', 'rågbröd', 'surdegsbröd',
+  ],
+  drinks: [
+    'vatten', 'mineralvatten', 'kolsyrat', 'läsk', 'coca-cola', 'fanta', 'sprite', 'pepsi',
+    'juice', 'apelsinjuice', 'äppeljuice', 'nektar', 'smoothie', 'saft', 'must', 'julmust',
+    'påskmust', 'kaffe', 'te', 'chai', 'espresso', 'cappuccino', 'latte', 'energidryck',
+    'sportdryck', 'öl', 'vin', 'cider', 'alkoholfri', 'kombucha', 'tonic', 'dryck',
+  ],
+  other: [],
+};
+
+function categorizeItem(itemName: string): CategoryType {
+  const lowerName = itemName.toLowerCase().trim();
+
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (category === 'other') continue;
+    
+    for (const keyword of keywords) {
+      if (lowerName.includes(keyword) || keyword.includes(lowerName)) {
+        return category as CategoryType;
+      }
+    }
+  }
+
+  return 'other';
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -84,6 +176,16 @@ serve(async (req) => {
     const userId = apiKeyData.user_id;
     console.log('Found user:', userId);
 
+    // Check user's auto_categorize setting
+    const { data: userSettings } = await supabase
+      .from('user_settings')
+      .select('auto_categorize')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const autoCategorize = userSettings?.auto_categorize ?? false;
+    console.log('Auto categorize setting:', autoCategorize);
+
     // Verify user has access to the list (owner or member)
     const { data: listAccess, error: accessError } = await supabase
       .from('shopping_lists')
@@ -130,17 +232,28 @@ serve(async (req) => {
       );
     }
 
-    // Prepare items to insert - all go to "other" category
-    const itemsToInsert = ingredients.map((ingredient: string) => ({
-      list_id: list_id,
-      name: ingredient.trim(),
-      category: 'other',
-      quantity: '1',
-      checked: false,
-      created_by: userId,
-    }));
+    // Prepare items to insert - categorize if auto_categorize is enabled
+    const itemsToInsert = ingredients.map((ingredient: string) => {
+      const name = ingredient.trim();
+      const category = autoCategorize ? categorizeItem(name) : 'other';
+      return {
+        list_id: list_id,
+        name,
+        category,
+        quantity: '1',
+        checked: false,
+        created_by: userId,
+      };
+    });
 
     console.log('Inserting items:', itemsToInsert.length);
+    if (autoCategorize) {
+      const categoryCounts: Record<string, number> = {};
+      itemsToInsert.forEach(item => {
+        categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+      });
+      console.log('Category distribution:', categoryCounts);
+    }
 
     // Insert all items
     const { data: insertedItems, error: insertError } = await supabase
@@ -159,11 +272,16 @@ serve(async (req) => {
     const addedCount = insertedItems?.length || 0;
     console.log(`Successfully added ${addedCount} ingredients`);
 
+    const message = autoCategorize 
+      ? `${addedCount} ingredienser tillagda och kategoriserade`
+      : `${addedCount} ingredienser tillagda i Övrigt`;
+
     return new Response(
       JSON.stringify({
         success: true,
         added: addedCount,
-        message: `${addedCount} ingredienser tillagda i Övrigt`
+        auto_categorized: autoCategorize,
+        message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
