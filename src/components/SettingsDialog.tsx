@@ -15,6 +15,7 @@ import { CategoryManager } from './CategoryManager';
 import { CategoryInfo } from '@/types/shopping';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ApiKeySection } from './ApiKeySection';
 
 interface SettingsDialogProps {
   settings: AppSettings;
@@ -106,6 +107,9 @@ export function SettingsDialog({
                 onCheckedChange={(checked) => onUpdateSettings({ showOnlyCategoriesWithItems: checked })}
               />
             </div>
+
+            <Separator />
+            <ApiKeySection />
 
             {onAddCategory && onDeleteCategory && (
               <>

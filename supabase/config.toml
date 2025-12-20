@@ -1,1 +1,10 @@
 project_id = "xsrpwwqynfdhpjjvvvjn"
+
+[functions.spell-check]
+verify_jwt = true
+
+[functions.get-user-lists]
+verify_jwt = false
+
+[functions.receive-ingredients]
+verify_jwt = false
