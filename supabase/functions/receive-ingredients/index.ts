@@ -20,12 +20,29 @@ const categoryKeywords: Record<CategoryType, string[]> = {
     'nektarin', 'persika', 'plommon', 'körsbär', 'granatäpple', 'fikon', 'dadlar', 'ingefära',
     'rödbetor', 'kålrot', 'palsternacka', 'fänkål', 'kronärtskocka',
   ],
+  // Pantry checked before dairy to ensure kokosmjölk matches here first
+  pantry: [
+    'pasta', 'ris', 'nudlar', 'couscous', 'bulgur', 'quinoa', 'linser', 'bönor', 'kikärtor',
+    'mjöl', 'vetemjöl', 'rågsikt', 'grahamsmjöl', 'bakpulver', 'bikarbonat', 'jäst',
+    'socker', 'florsocker', 'strösocker', 'vaniljsocker', 'sirap', 'honung', 'lönnsirap',
+    'olja', 'olivolja', 'rapsolja', 'solrosolja', 'kokosolja', 'vinäger', 'balsamico',
+    'soja', 'sojasås', 'ketchup', 'senap', 'majonnäs', 'sriracha', 'tabasco', 'worcestershire',
+    'tomatpuré', 'krossade tomater', 'passerade tomater', 'kokosmjölk', 'kokosgrädde',
+    'buljong', 'fond', 'nötter', 'mandlar', 'valnötter', 'hasselnötter', 'cashewnötter',
+    'jordnötter', 'frön', 'solrosfrön', 'pumpafrön', 'sesamfrön', 'chiafrön', 'linfrön',
+    'havregryn', 'müsli', 'flingor', 'cornflakes', 'granola', 'russin', 'katrinplommon',
+    'aprikos', 'tranbär', 'kokos', 'choklad', 'kakao', 'kakaopulver', 'nutella',
+    'jordnötssmör', 'sylt', 'marmelad', 'konserver', 'burk', 'konserv',
+    'oliver', 'svarta oliver', 'gröna oliver', 'kalamata',
+    'spagetti', 'spaghetti', 'makaroner', 'penne', 'fusilli', 'tagliatelle', 'lasagne',
+  ],
   dairy: [
-    'mjölk', 'grädde', 'vispgrädde', 'matlagningsgrädde', 'créme fraiche', 'creme fraiche',
+    'grädde', 'vispgrädde', 'matlagningsgrädde', 'créme fraiche', 'creme fraiche',
     'filmjölk', 'yoghurt', 'kvarg', 'ost', 'smör', 'margarin', 'ägg', 'egg', 'cream cheese',
     'färskost', 'cottage cheese', 'mozzarella', 'parmesan', 'cheddar', 'brie', 'feta',
     'halloumi', 'ricotta', 'mascarpone', 'gruyère', 'gouda', 'edamer', 'prästost', 'herrgård',
     'västerbotten', 'adelost', 'getost', 'havredryck', 'sojamjölk', 'mandelmjölk', 'oatly',
+    'mjölk', 'lättmjölk', 'mellanmjölk', 'standardmjölk',
   ],
   meat: [
     'kött', 'nötkött', 'fläskkött', 'kycklingfilé', 'kyckling', 'kalkon', 'lamm', 'vilt',
@@ -39,19 +56,6 @@ const categoryKeywords: Record<CategoryType, string[]> = {
     'strömming', 'abborre', 'gädda', 'gös', 'öring', 'forell', 'tonfisk', 'sardiner',
     'ansjovis', 'räkor', 'kräftor', 'hummer', 'krabba', 'musslor', 'bläckfisk', 'calamari',
     'skaldjur', 'kaviar', 'rom', 'gravad', 'rökt lax', 'fiskpinnar', 'fiskbullar',
-  ],
-  pantry: [
-    'pasta', 'ris', 'nudlar', 'couscous', 'bulgur', 'quinoa', 'linser', 'bönor', 'kikärtor',
-    'mjöl', 'vetemjöl', 'rågsikt', 'grahamsmjöl', 'bakpulver', 'bikarbonat', 'jäst',
-    'socker', 'florsocker', 'strösocker', 'vaniljsocker', 'sirap', 'honung', 'lönnsirap',
-    'olja', 'olivolja', 'rapsolja', 'solrosolja', 'kokosolja', 'vinäger', 'balsamico',
-    'soja', 'sojasås', 'ketchup', 'senap', 'majonnäs', 'sriracha', 'tabasco', 'worcestershire',
-    'tomatpuré', 'krossade tomater', 'passerade tomater', 'kokosmjölk', 'kokosgrädde',
-    'buljong', 'fond', 'nötter', 'mandlar', 'valnötter', 'hasselnötter', 'cashewnötter',
-    'jordnötter', 'frön', 'solrosfrön', 'pumpafrön', 'sesamfrön', 'chiafrön', 'linfrön',
-    'havregryn', 'müsli', 'flingor', 'cornflakes', 'granola', 'russin', 'katrinplommon',
-    'aprikos', 'tranbär', 'kokos', 'choklad', 'kakao', 'kakaopulver', 'nutella',
-    'jordnötssmör', 'sylt', 'marmelad', 'konserver', 'burk', 'konserv',
   ],
   spices: [
     'salt', 'peppar', 'svartpeppar', 'vitpeppar', 'paprikapulver', 'chili', 'cayenne',
@@ -82,11 +86,25 @@ const categoryKeywords: Record<CategoryType, string[]> = {
   other: [],
 };
 
+// Prefixes that indicate vegetarian products (should not be categorized as meat)
+const vegetarianPrefixes = ['vego', 'veg', 'vegetarisk', 'vegansk'];
+
+function isVegetarianProduct(itemName: string): boolean {
+  const lowerName = itemName.toLowerCase().trim();
+  return vegetarianPrefixes.some(prefix => lowerName.startsWith(prefix));
+}
+
 function categorizeItem(itemName: string): CategoryType {
   const lowerName = itemName.toLowerCase().trim();
 
+  // Check if it's a vegetarian product - these should go to 'other' and not match meat
+  const isVegetarian = isVegetarianProduct(itemName);
+
   for (const [category, keywords] of Object.entries(categoryKeywords)) {
     if (category === 'other') continue;
+    
+    // Skip meat category for vegetarian products
+    if (category === 'meat' && isVegetarian) continue;
     
     for (const keyword of keywords) {
       if (lowerName.includes(keyword) || keyword.includes(lowerName)) {
