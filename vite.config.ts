@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Handla - Smart inköpslista",
-        short_name: "Handla",
+        name: "Inköpslista Mattian",
+        short_name: "Inköpslista",
         description: "Organisera din shopping efter butikskategori. Fungerar offline.",
         theme_color: "#22c55e",
         background_color: "#faf9f7",
