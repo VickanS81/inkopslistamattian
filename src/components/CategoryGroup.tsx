@@ -67,6 +67,7 @@ export function CategoryGroup({
   return (
     <motion.div 
       ref={setDroppableRef}
+      data-category-id={category}
       style={style}
       className={`
         transition-all duration-200 relative
