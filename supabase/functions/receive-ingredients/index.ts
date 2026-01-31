@@ -9,6 +9,75 @@ const corsHeaders = {
 // Category keywords for auto-categorization (same as frontend)
 type CategoryType = 'vegetables' | 'dairy' | 'meat' | 'fish' | 'pantry' | 'spices' | 'frozen' | 'bakery' | 'drinks' | 'other';
 
+// Common Swedish words that are NOT ingredients
+const NON_INGREDIENT_WORDS = new Set([
+  // Conjunctions and prepositions
+  'och', 'eller', 'samt', 'med', 'i', 'på', 'till', 'för', 'av', 'om', 'från',
+  
+  // Articles
+  'en', 'ett', 'den', 'det', 'de',
+  
+  // Adjectives commonly found in recipes that aren't ingredients
+  'stor', 'stora', 'liten', 'lilla', 'små', 'litet',
+  'fin', 'fina', 'finare', 'finast',
+  'riven', 'rivna', 'rivet', 'hackad', 'hackade', 'hackat',
+  'skivad', 'skivade', 'skivat', 'tärnad', 'tärnade', 'tärnat',
+  'strimlad', 'strimlade', 'strimlat',
+  'kokt', 'kokta', 'kokat', 'stekt', 'stekta',
+  'färsk', 'färska', 'färskt', 'fryst', 'frysta',
+  'varm', 'varma', 'varmt', 'kall', 'kalla', 'kallt',
+  'röd', 'röda', 'rött', 'grön', 'gröna', 'grönt',
+  'gul', 'gula', 'gult', 'vit', 'vita', 'vitt',
+  'hel', 'hela', 'helt',
+  
+  // Measurements and time
+  'ca', 'circa', 'cirka', 'ungefär', 'minuter', 'minut', 'timme', 'timmar',
+  'gram', 'kilo', 'kg', 'dl', 'cl', 'ml', 'l', 'liter', 'msk', 'tsk', 'krm', 'nypa',
+  'st', 'stycken', 'styck', 'bit', 'bitar', 'skiva', 'skivor',
+  
+  // Cooking verbs and instructions
+  'tillsätt', 'lägg', 'häll', 'rör', 'blanda', 'stek', 'kok', 'grädda',
+  'servera', 'garnera', 'smaka', 'krydda', 'salta', 'peppra',
+  
+  // Other common non-ingredient words in recipe contexts
+  'efter', 'smak', 'behov', 'lite', 'mycket', 'lagom', 'extra',
+  'ev', 'eventuellt', 'valfritt', 'alternativt',
+]);
+
+// Minimum/maximum length for an ingredient
+const MIN_INGREDIENT_LENGTH = 2;
+const MAX_INGREDIENT_LENGTH = 50;
+
+/**
+ * Checks if a string is a valid ingredient (filters out "och", "stor", etc.)
+ */
+function isValidIngredient(text: string): boolean {
+  const trimmed = text.trim().toLowerCase();
+  
+  // Too short or too long
+  if (trimmed.length < MIN_INGREDIENT_LENGTH || trimmed.length > MAX_INGREDIENT_LENGTH) {
+    return false;
+  }
+  
+  // Check if it's just a non-ingredient word
+  if (NON_INGREDIENT_WORDS.has(trimmed)) {
+    return false;
+  }
+  
+  // Check if it's just a number (possibly with unit)
+  if (/^[\d,.]+\s*(g|kg|dl|cl|ml|l|msk|tsk|krm|st)?$/.test(trimmed)) {
+    return false;
+  }
+  
+  // Check if it contains mostly non-alphabetic characters
+  const letterCount = (trimmed.match(/[a-zåäö]/gi) || []).length;
+  if (letterCount < trimmed.length * 0.5) {
+    return false;
+  }
+  
+  return true;
+}
+
 const categoryKeywords: Record<CategoryType, string[]> = {
   vegetables: [
     'äpple', 'banan', 'apelsin', 'citron', 'lime', 'druvor', 'päron', 'kiwi', 'mango', 'ananas',
@@ -250,8 +319,19 @@ serve(async (req) => {
       );
     }
 
+    // Filter out non-ingredient words like "och", "stor", etc.
+    const validIngredients = ingredients.filter((ingredient: string) => {
+      const isValid = isValidIngredient(ingredient);
+      if (!isValid) {
+        console.log(`Filtered out non-ingredient: "${ingredient}"`);
+      }
+      return isValid;
+    });
+
+    console.log(`Filtered ${ingredients.length - validIngredients.length} non-ingredients, ${validIngredients.length} valid ingredients remaining`);
+
     // Prepare items to insert - categorize if auto_categorize is enabled
-    const itemsToInsert = ingredients.map((ingredient: string) => {
+    const itemsToInsert = validIngredients.map((ingredient: string) => {
       const name = ingredient.trim();
       const category = autoCategorize ? categorizeItem(name) : 'other';
       return {
