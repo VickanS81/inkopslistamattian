@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CategoryType, CategoryInfo } from '@/types/shopping';
 import { CategoryGroup } from './CategoryGroup';
 import { Header } from './Header';
@@ -9,6 +9,7 @@ import { SettingsDialog } from './SettingsDialog';
 import { ListSelector } from './ListSelector';
 import { useShoppingListDB } from '@/hooks/useShoppingListDB';
 import { useSettings, AppSettings } from '@/hooks/useSettings';
+import { useLastViewedCategory } from '@/hooks/useLastViewedCategory';
 import { DragProvider, useDragState } from '@/contexts/DragContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -113,7 +114,13 @@ export function ShoppingListDB() {
 
   const { signOut, user } = useAuth();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
+  const { refreshObserver } = useLastViewedCategory(currentList?.id);
   const [spellSuggestions, setSpellSuggestions] = useState<Record<string, SpellSuggestion>>({});
+
+  // Refresh observer when category order changes
+  useEffect(() => {
+    refreshObserver();
+  }, [categoryOrder, refreshObserver]);
 
   const analyzeWithAI = useCallback(async (itemId: string, word: string) => {
     // Fetch the latest autoCategorize setting directly from database to avoid stale closure
